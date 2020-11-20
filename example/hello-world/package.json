@@ -1,0 +1,13 @@
+{
+  "name": "hello-world",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon index"
+  },
+  "author": "Herudi",
+  "license": "MIT",
+  "devDependencies": {
+    "nodemon": "^2.0.6"
+  }
+}

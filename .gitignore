@@ -1,0 +1,17 @@
+/node_modules
+/dist
+yarn.lock
+wiki.md
+.npmignore
+
+
+/benchmark/node_modules
+/example/test
+/example/hello-world/node_modules
+/example/using-https/sslcert/test.crt
+/example/using-https/sslcert/test.key
+/example/using-next-js/node_modules
+/example/using-serve-static/node_modules
+/example/using-nuxt-js/node_modules
+/example/using-ejs/node_modules
+/example/using-body-parser/node_modules

@@ -1,0 +1,13 @@
+{
+  "name": "test-benchmark",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Herudi",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.17.1",
+    "fastify": "^3.7.0",
+    "koa": "^2.13.0",
+    "polka": "^0.5.2"
+  }
+}
