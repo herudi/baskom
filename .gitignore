@@ -1,5 +1,6 @@
 /node_modules
 /dist
+/src/dev.ts
 yarn.lock
 wiki.md
 .npmignore
