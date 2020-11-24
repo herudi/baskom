@@ -1,0 +1,10 @@
+{
+  "name": "using-body-parser",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Herudi",
+  "license": "MIT",
+  "dependencies": {
+    "body-parser": "^1.19.0"
+  }
+}

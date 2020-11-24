@@ -6,25 +6,31 @@ export interface IApp {
     useParseQueryString?: any
 }
 
-export interface IReq extends IncomingMessage {
+export interface Request extends IncomingMessage {
     _body?: boolean;
     _parsedUrl?: any;
     body?: any;
+    params?: any;
+    query?: any;
+    search?: any;
+    originalUrl?: any;
     [key: string]: any;
 }
 
-export interface IRes extends ServerResponse {
+export interface Response extends ServerResponse {
+    code: (code: number) => Response;
+    type: (type: string) => Response;
     json: (data: any) => any;
-    code: (code: number) => any;
-    send: (data: any, header?: any) => any;
+    send: (data: any) => any;
     render: (pathfile: string, ...args: any) => any;
     redirect: (path: string) => any;
-    stream: (pathfile: string, mimeType?: string) => any;
-    download: (pathfile: string, header?: any) => any;
+    sendFile: (data: any) => any;
+    download: (data: any) => any;
+    locals: any;
     [key: string]: any;
 }
 
-export interface IRun extends Function {};
+export interface Runner extends Function {};
 
 export interface IParseBody {
     limit?: string | number;

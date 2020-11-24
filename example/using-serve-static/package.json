@@ -1,0 +1,10 @@
+{
+  "name": "using-serve-static",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Herudi",
+  "license": "MIT",
+  "dependencies": {
+    "serve-static": "^1.14.1"
+  }
+}

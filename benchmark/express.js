@@ -7,7 +7,7 @@ express()
     .get('/json/:name', (req, res) => {
         res.send({ name: req.params.name });
     })
-    .get('/hello/:name', (req, res) => {
-        res.send('hello ' + req.params.name);
+    .get('/hello', (req, res) => {
+        res.send('hello');
     })
     .listen(3000);

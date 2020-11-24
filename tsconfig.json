@@ -3,7 +3,7 @@
         "./src/index.ts"
     ],
     "compilerOptions": {
-        "outDir": "./dist",
+        "outDir": "./lib",
         "module": "CommonJS",
         "target": "ES2015",
         "removeComments": true,

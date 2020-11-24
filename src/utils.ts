@@ -1,5 +1,5 @@
 import { TYPE } from './constant';
-import { IRes, IRun, IReq } from '../types';
+import { Request, Response, Runner } from './types';
 
 export function isTypeBodyPassed(header: any, _type) {
     return header[TYPE] && header[TYPE].indexOf(_type) !== -1;
@@ -15,7 +15,7 @@ export function getParamNames(func: Function) {
 }
 
 export function generalError(useDebugError = false) {
-    return (err: any, req: IReq, res: IRes, run: IRun) => {
+    return (err: any, req: Request, res: Response, run: Runner) => {
         let code = err.code || err.status || err.statusCode || 500;
         let stack: any;
         if (useDebugError && err.stack) {
@@ -80,86 +80,64 @@ export function toPathx(str: string | RegExp): any {
     return { params, pathx };
 }
 
-export function asyncWrapFn(handler: any) {
-    return async (req: IReq, res: IRes, run: IRun) => {
-        try {
-            let fn = await handler(req, res, run);
-            if (typeof fn === 'string') {
-                res.end(fn);
-            } else if (typeof fn === 'object') {
-                res.json(fn);
-            } else {
-                return fn;
-            }
-        } catch (err) {
-            run(err);
-        }
-    };
+const asyncWrapFn = (handler: any) => async (req: Request, res: Response, run: Runner) => {
+    try {
+        let fn = await handler(req, res, run);
+        if (typeof fn === 'undefined') return;
+        if (typeof fn === 'string') res.end(fn);
+        else res.json(fn);
+    } catch (err) {
+        run(err);
+    }
 }
 
-export function wrapFn(handler: any) {
-    return (req: IReq, res: IRes, run: IRun) => {
-        try {
-            let fn = handler(req, res, run);
-            if (typeof fn === 'string') {
-                res.end(fn);
-            } else if (!!fn && typeof fn.then === 'function') {
-                return asyncWrapFn(fn);
-            } else if (typeof fn === 'object') {
-                res.json(fn);
-            } else {
-                return fn;
-            }
-        } catch (err) {
-            run(err);
-        }
-    };
+const wrapFn = (handler: any) => (req: Request, res: Response, run: Runner) => {
+    try {
+        let fn = handler(req, res, run);
+        if (typeof fn === 'undefined') return;
+        if (typeof fn === 'string') res.end(fn);
+        else if (typeof fn.then === 'function') return withPromise(fn, res, run);
+        else res.json(fn);
+    } catch (err) {
+        run(err);
+    }
 }
 
-export function wrap(fn: any) {
-    const isAsync = fn.constructor.name === "AsyncFunction";
-    return isAsync ? asyncWrapFn(fn) : wrapFn(fn);
+// function asyncWrapFn(handler: any) {
+//     return async function (req: Request, res: Response, run: Runner) {
+//         try {
+//             let fn = await handler(req, res, run);
+//             if (typeof fn === 'string') res.end(fn);
+//             else if (typeof fn === 'object') res.json(fn);
+//             else return fn;
+//         } catch (err) {
+//             run(err);
+//         }
+//     }
+// }
+
+// function wrapFn(handler: any) {
+//     return function (req: Request, res: Response, run: Runner) {
+//         try {
+//             let fn = handler(req, res, run);
+//             fn && sendData(fn, res, run);
+//         } catch (err) {
+//             run(err);
+//         }
+//     }
+// }
+
+async function withPromise(handler: any, res: Response, run: Runner) {
+    try {
+        let fn = await handler;
+        if (typeof fn === 'string') res.end(fn);
+        else if (typeof fn === 'object') res.json(fn);
+    } catch (err) {
+        run(err);
+    }
 }
 
-export function asyncWrapErrorFn(handler: any) {
-    return async (err: any, req: IReq, res: IRes, run: IRun) => {
-        try {
-            let fn = await handler(err, req, res, run);
-            res.statusCode = res.code || err.code || err.status || err.statusCode || 500;
-            if (typeof fn === 'string') {
-                res.end(fn);
-            } else if (typeof fn === 'object') {
-                res.json(fn);
-            } else {
-                return fn;
-            }
-        } catch (err) {
-            run(err);
-        }
-    };
-}
-
-export function wrapErrorFn(handler: any) {
-    return (err: any, req: IReq, res: IRes, run: IRun) => {
-        try {
-            let fn = handler(err, req, res, run);
-            res.statusCode = res.code || err.code || err.status || err.statusCode || 500;
-            if (typeof fn === 'string') {
-                res.end(fn);
-            } else if (!!fn && typeof fn.then === 'function') {
-                return asyncWrapErrorFn(fn);
-            } else if (typeof fn === 'object') {
-                res.json(fn);
-            } else {
-                return fn;
-            }
-        } catch (err) {
-            run(err);
-        }
-    };
-}
-
-export function wrapError(fn: any) {
-    const isAsync = fn.constructor.name === "AsyncFunction";
-    return isAsync ? asyncWrapErrorFn(fn) : wrapErrorFn(fn);
+export function wrap(handler: any) {
+    const isAsync = handler.constructor.name === "AsyncFunction";
+    return isAsync ? asyncWrapFn(handler) : wrapFn(handler);
 }

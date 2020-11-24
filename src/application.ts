@@ -1,13 +1,13 @@
 import * as http from 'http';
 import Router from './router';
 import { parse as parsequery } from 'querystring';
-import { generalError, toPathx, findBase, getParamNames, wrap, wrapError } from './utils';
+import { generalError, toPathx, findBase, getParamNames, wrap } from './utils';
 import { parseurl, parsebody } from './parser';
-import response from './res';
-import { IApp, IReq, IRes, IRun } from '../types';
+import response from './response';
+import { IApp, Request, Response, Runner } from './types';
 
-export default class App extends Router {
-    private error: (err: any, req: IReq, res: IRes, run: IRun) => any;
+export default class Application extends Router {
+    private error: (err: any, req: Request, res: Response, run: Runner) => any;
     private midds: any[];
     private notFound: any;
     private parsequery: any;
@@ -39,7 +39,7 @@ export default class App extends Router {
         let larg = args[args.length - 1];
         let prefix = null;
         if (typeof arg === 'object' && arg.engine) {
-            let _render = (res: IRes, filename: any, ...args: any) => {
+            let _render = (res: Response, filename: any, ...args: any) => {
                 arg.engine.renderFile(filename, ...args, (err: any, html: any) => {
                     if (err) throw new Error(err.message || 'Error View Something Went Wrong');
                     res.end(html);
@@ -52,7 +52,7 @@ export default class App extends Router {
                 render: arg.render || _render
             }
         } else if (typeof arg === 'function' && (getParamNames(arg)[0] === 'err' || getParamNames(arg)[0] === 'error' || getParamNames(arg).length === 4)) {
-            this.error = wrapError(larg);
+            this.error = larg;
         } else if (arg === '*') {
             this.notFound = wrap(larg);
         } else if (larg.routes) {
@@ -126,7 +126,7 @@ export default class App extends Router {
                     let el = args[i];
                     let fixs = this.pmidds[prefix] || [];
                     if (prefix) {
-                        fixs.push((req: IReq, res: IRes, run: IRun) => {
+                        fixs.push((req: Request, res: Response, run: Runner) => {
                             req.url = req.url.substring(prefix.length) || '/';
                             req.path = req.path ? req.path.substring(prefix.length) || '/' : '/';
                             run();
@@ -139,7 +139,7 @@ export default class App extends Router {
         return this;
     }
 
-    private requestHandler(req: IReq, res: IRes) {
+    private requestHandler(req: Request, res: Response) {
         let midds = this.midds,
             url = this.parseurl(req), 
             path = url.pathname,
@@ -161,7 +161,7 @@ export default class App extends Router {
     }
 
     server() {
-        return (req: IReq, res: IRes) => this.requestHandler(req, res);
+        return (req: Request, res: Response) => this.requestHandler(req, res);
     }
 
     listen(...args: any) {

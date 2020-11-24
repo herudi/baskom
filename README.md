@@ -1,6 +1,6 @@
 # Baskom js
 
-[![npm version](https://img.shields.io/badge/npm-0.0.1-blue.svg)](https://npmjs.org/package/baskom) 
+[![npm version](https://img.shields.io/badge/npm-0.0.4-blue.svg)](https://npmjs.org/package/baskom) 
 [![License](https://img.shields.io/:license-mit-blue.svg)](http://badges.mit-license.org)
 [![download-url](https://img.shields.io/npm/dm/baskom.svg)](https://npmjs.org/package/baskom)
 
@@ -8,7 +8,7 @@ The fun nodejs web framework with focus in speed, easy to use and low overhead.
 
 ## Features
 
-- Crazy Fast [See Benchmark](https://github.com/herudi/baskom/tree/master/benchmark)
+- Just Fast [See Benchmark](https://github.com/herudi/baskom/tree/master/benchmark)
 - Just ~40kb installed.
 - Low dependencies.
 - Easy to use.
@@ -30,15 +30,20 @@ $ yarn add baskom
 const baskom = require('baskom');
 
 baskom()
-    .get('/simple', _ => 'baskom is simple')
+    .get('/baskom', (req, res) => {
+        return 'baskom is simple';
+    })
     .get('/with-status', (req, res) => {
         res.code(201);
         return 'with-status 201';
     })
-    .get('/with-json/:name', (req, res) => {
-        return { name: req.params.name };
+    .get('/with-json', (req, res) => {
+        return { name: 'herudi' };
     })
-    .get('/with-res', (req, res) => {
+    .get('/with-param/:name', (req, res) => {
+        return 'name ' + req.params.name;
+    })
+    .get('/with-res-example', (req, res) => {
         // send text
         res.send('test');
         // send json
@@ -46,9 +51,10 @@ baskom()
         // send with status code
         res.code(201).send('Created');
         // send html
-        res.send('<h1>Home</h1>', {'Content-Type' : 'text/html'});
+        res.type('text/html').send('<h1>Home</h1>');
+
         // send file stream
-        res.stream(__dirname + '/test.txt', { 'Content-Type': 'text/plain' });
+        res.type('text/plain').sendFile(__dirname + '/test.txt');
 
         // json
         res.json({ name: 'test' });
@@ -69,6 +75,7 @@ baskom()
     });
 
 ```
+For typescript see [example using ts](https://github.com/herudi/baskom/tree/master/example/using-ts)
 ## Middleware
 ```js
 

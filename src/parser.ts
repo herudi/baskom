@@ -2,16 +2,17 @@ import { JSON_TYPE, TEXT_PLAIN_TYPE, FORM_URLENCODED_TYPE } from "./constant";
 import { isTypeBodyPassed } from "./utils";
 import { parse as native_parseurl } from 'url';
 import { parse as parsequery } from 'querystring';
-import { IParseBody, IReq, IRes, IRun } from '../types';
+import { IParseBody, Request, Response, Runner } from './types';
 
 export function parsebody({ limit, qs_parse }: IParseBody = {}) {
-    return function (req: IReq, res: IRes, run: IRun) {
+    return function (req: Request, res: Response, run: Runner) {
+        let dismethod = 'GET,DELETE';
         let header = req.headers;
-        if (
+        if (dismethod.indexOf(req.method) === -1 && (
             isTypeBodyPassed(header, JSON_TYPE) ||
             isTypeBodyPassed(header, TEXT_PLAIN_TYPE) ||
             isTypeBodyPassed(header, FORM_URLENCODED_TYPE)
-        ) {
+        )) {
             let data = [];
             let error = null;
             let lmt = parsebytes(limit || '1mb');
@@ -72,7 +73,7 @@ function parsebytes(arg: string | number) {
     return Math.floor(sizeList[unt] * val);
 }
 
-export function parseurl(req: IReq) {
+export function parseurl(req: Request) {
     let url = req.url;
     let parsed = req._parsedUrl;
     if (parsed && parsed._raw === url) return parsed;

@@ -1,0 +1,8 @@
+{
+  "name": "using-custom-http",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Herudi",
+  "license": "MIT",
+  "dependencies": {}
+}

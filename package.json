@@ -1,12 +1,12 @@
 {
     "name": "baskom",
-    "version": "0.0.1",
+    "version": "0.0.4",
     "description": "The fun nodejs web framework with focus in speed, easy to use and low overhead.",
-    "main": "dist/index.js",
-    "types": "dist/index.d.ts",
+    "main": "lib/index.js",
+    "types": "lib/index.d.ts",
     "scripts": {
-        "clean": "rimraf dist",
-        "build": "rimraf dist && tsc",
+        "clean": "rimraf lib",
+        "build": "rimraf lib && tsc",
         "dev": "ts-node-dev --respawn src/dev.ts"
     },
     "repository": {
