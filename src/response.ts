@@ -1,67 +1,56 @@
-import { TYPE, JSON_CHARSET, OCTET_TYPE, CONTENT_LENGTH } from './constant';
 import * as path from 'path';
 import * as fs from 'fs';
+import { STATUS_CODES } from "http";
+import { CONTENT_LENGTH, JSON_CHARSET, OCTET_TYPE, TYPE } from "./constant";
 import { Response } from './types';
-import { STATUS_CODES } from 'http';
 
-function res(res: Response, template: any) {
-    res.code = (code: number) => {
-        res.statusCode = code;
+function response(res: Response) {
+    res.code = function (code: number) {
+        this.statusCode = code;
         return this;
-    }
-    res.type = (type: string) => {
-        res.setHeader(TYPE, type);
+    };
+    res.type = function (type: string) {
+        this.setHeader(TYPE, type);
         return this;
-    }
-    res.json = (data: any) => {
-        let code = res.statusCode || 200;
+    };
+    res.json = function (data: any) {
+        let code = this.statusCode || 200;
         data = JSON.stringify(data);
-        res.writeHead(code, {
+        this.writeHead(code, {
             [TYPE]: JSON_CHARSET,
             [CONTENT_LENGTH]: Buffer.byteLength(data)
         });
-        res.end(data);
+        this.end(data);
     };
-    res.send = (data: any) => {
-        if (typeof data === 'string') res.end(data);
-        else if (typeof data === 'object') res.json(data);
-        else res.end(data || STATUS_CODES[res.statusCode]);
+    res.send = function (data: any) {
+        if (typeof data === 'string') this.end(data);
+        else if (typeof data === 'object') this.json(data);
+        else this.end(data || STATUS_CODES[this.statusCode]);
     };
-    res.sendFile = (data: any) => {
-        res.setHeader(TYPE, res.getHeader(TYPE) || OCTET_TYPE);
+    res.sendFile = function (data: any) {
+        this.setHeader(TYPE, this.getHeader(TYPE) || OCTET_TYPE);
         if (typeof data === 'string') {
             let fStream = fs.createReadStream(data);
-            fStream.pipe(res);
+            fStream.pipe(this);
         } else {
-            data.pipe(res);
+            data.pipe(this);
         }
     };
-    res.redirect = (path: string) => {
-        let code = res.statusCode === 200 ? 302 : res.statusCode;
-        res.writeHead(code, { 'Location': path });
-        res.end();
+    res.redirect = function (path: string) {
+        let code = this.statusCode === 200 ? 302 : this.statusCode;
+        this.writeHead(code, { 'Location': path });
+        this.end();
     };
-    res.download = (data: any) => {
+    res.download = function (data: any) {
         let content = 'content-disposition';
         if (typeof data === 'string') {
-            res.setHeader(content, res.getHeader(content) || 'attachment; filename=' + path.basename(data))
+            this.setHeader(content, this.getHeader(content) || 'attachment; filename=' + path.basename(data))
             let fStream = fs.createReadStream(data);
-            fStream.pipe(res);
+            fStream.pipe(this);
         } else {
-            res.setHeader(content, res.getHeader(content) || 'attachment; filename=no-content-disposition.txt');
-            data.pipe(res);
+            this.setHeader(content, this.getHeader(content) || 'attachment; filename=no-content-disposition.txt');
+            data.pipe(this);
         }
-    };
-    if (template) {
-        res.render = (pathfile: string, ...args: any) => {
-            let obj = template;
-            pathfile = path.extname(pathfile) !== '' ? pathfile : pathfile + obj.ext;
-            if (obj.basedir !== '' || obj.basedir !== null) {
-                pathfile = obj.basedir + '/' + pathfile;
-            }
-            return obj.render(res, pathfile, ...args);
-        };
     }
 }
-
-export default res;
+export default response;

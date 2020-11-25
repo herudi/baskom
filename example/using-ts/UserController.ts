@@ -7,6 +7,7 @@ class UserController extends Router {
     constructor() {
         super();
         this.get('/user', (req: Request, res: Response) => {
+            console.log(req.user);
             return service.findAll();
         })
 
