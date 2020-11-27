@@ -6,6 +6,6 @@ baskom()
         return { name: req.params.name }
     })
     .get('/hello', (req, res) => {
-        return 'hello';
+        return res.send('hello');
     })
     .listen(3000);

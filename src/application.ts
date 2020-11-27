@@ -35,8 +35,13 @@ export default class Application extends Router {
         return wrap(fn);
     }
 
+    on(method: string, path: string, ...args: any[]){
+        if (args.length > 1 && isUse === void 0) isUse = 1;
+        return super.on(method, path, ...args);
+    }
+
     use(...args: any) {
-        if (isUse === void 0) isUse = 0;
+        if (isUse === void 0) isUse = 1;
         let arg = args[0];
         let larg = args[args.length - 1];
         let prefix = null;
@@ -153,20 +158,19 @@ export default class Application extends Router {
     }
 
     private requestHandler(req: Request, res: Response) {
-        let midds = this.midds,
-            url = this.parseurl(req),
+        let url = this.parseurl(req),
             path = url.pathname,
-            prefix = findBase(req.path = path),
             route = this.getRoute(req.method, path, this.notFound);
         response(res);
-        req.originalUrl = req.url;
+        req.originalUrl = req.originalUrl || req.url;
         req.query = this.parsequery(url.query);
         req.search = url.search;
         req.params = route.params;
+        if (!isUse) return route.handlers[0](req, res, (err?: any) => this.error(err, req, res, (val?: any) => {}));
+        let midds = this.midds, prefix = findBase(req.path = path);
         if (this.pmidds[prefix]) {
             midds = midds.concat(this.pmidds[prefix]);
         }
-        if (isUse === void 0) return route.handlers[0](req, res);
         midds = midds.concat(route.handlers);
         let mlen = midds.length, j = 0;
         let run = (err?: any) => err ? this.error(err, req, res, run) : execute();

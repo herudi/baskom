@@ -1,7 +1,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { STATUS_CODES } from "http";
-import { CONTENT_LENGTH, JSON_CHARSET, OCTET_TYPE, TYPE } from "./constant";
+import { JSON_CHARSET, OCTET_TYPE, TYPE } from "./constant";
 import { Response } from './types';
 
 function response(res: Response) {
@@ -14,12 +14,8 @@ function response(res: Response) {
         return this;
     };
     res.json = function (data: any) {
-        let code = this.statusCode || 200;
         data = JSON.stringify(data);
-        this.writeHead(code, {
-            [TYPE]: JSON_CHARSET,
-            [CONTENT_LENGTH]: Buffer.byteLength(data)
-        });
+        this.setHeader(TYPE, JSON_CHARSET);
         this.end(data);
     };
     res.send = function (data: any) {

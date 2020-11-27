@@ -26,7 +26,7 @@ export default class Router {
         this.all = this.on.bind(this, 'ALL');
     }
 
-    private on(method: string, path: string, ...args: any[]) {
+    on(method: string, path: string, ...args: any[]) {
         let handlers = [], j = 0, i = 0;
         for (; i < args.length; i++) {
             let arg = args[i];

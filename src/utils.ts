@@ -40,9 +40,7 @@ export function generalError(useDebugError = false) {
 
 export function findBase(path: string) {
     let iof = path.indexOf('/', 1);
-    if (iof !== -1) {
-        return path.substring(0, iof);
-    }
+    if (iof !== -1) return path.substring(0, iof);
     return path;
 }
 
@@ -82,45 +80,35 @@ export function toPathx(str: string | RegExp): any {
     return { params, pathx };
 }
 
-// const asyncWrapFn = (handler: any) => async (req: Request, res: Response, run: Runner) => {
-//     try {
-//         let fn = await handler(req, res, run);
-//         if (typeof fn === 'undefined') return;
-//         if (typeof fn === 'string') res.end(fn);
-//         else res.json(fn);
-//     } catch (err) {
-//         run(err);
-//     }
-// }
-
-// const wrapFn = (handler: any) => (req: Request, res: Response, run: Runner) => {
-//     try {
-//         let fn = handler(req, res, run);
-//         if (typeof fn === 'undefined') return;
-//         if (typeof fn === 'string') res.end(fn);
-//         else if (typeof fn.then === 'function') return withPromise(fn, res, run);
-//         else res.json(fn);
-//     } catch (err) {
-//         run(err);
-//     }
-// }
-
-// export function parseurl(req: Request) {
-//     let url = req.url;
-//     let parsed = req._parsedUrl;
-//     if (parsed && parsed._raw === url) return parsed;
-//     parsed = native_parseurl(url);
-//     parsed._raw = url;
-//     return (req._parsedUrl = parsed);
-// }
+export function parseurl(req: Request) {
+    let str = req.url, url = req._parsedUrl;
+    if (url && url._raw === str) return url;
+    let pathname = str, query = null, search = null, i = 1, len = str.length;
+    while (i < len) {
+        if (str.charCodeAt(i) === 0x3f) {
+            pathname = str.substring(0, i);
+            query = str.substring(i + 1);
+            search = str.substring(i);
+            break;
+        }
+        i++;
+    }
+    url = {};
+    url.path = url._raw = url.href = str;
+    url.pathname = pathname;
+    url.query = query;
+    url.search = search;
+    return (req._parsedUrl = url);
+}
 
 function asyncWrapFn(handler: any) {
     return async function (req: Request, res: Response, run: Runner) {
         try {
             let fn = await handler(req, res, run);
-            if (fn === void 0) return;
-            if (typeof fn === 'string') res.end(fn);
-            else res.json(fn);
+            if (fn) {
+                if (typeof fn === 'string') res.end(fn);
+                else res.json(fn);
+            };
         } catch (err) {
             run(err);
         }
@@ -131,10 +119,11 @@ function wrapFn(handler: any) {
     return function (req: Request, res: Response, run: Runner) {
         try {
             let fn = handler(req, res, run);
-            if (fn === void 0) return;
-            if (typeof fn === 'string') res.end(fn);
-            else if (typeof fn.then === 'function') return withPromise(fn, res, run);
-            else res.json(fn);
+            if (fn) {
+                if (typeof fn === 'string') res.end(fn);
+                else if (typeof fn.then === 'function') return withPromise(fn, res, run);
+                else res.json(fn);
+            };
         } catch (err) {
             run(err);
         }
@@ -205,31 +194,6 @@ export function parsebody({ limit, qs_parse }: IParseBody = {}) {
         }
 
     }
-}
-
-export function parseurl(req: Request) {
-    let str = req.url;
-    let parsed = req._parsedUrl;
-    if (parsed && parsed._raw === str) return parsed;
-    let iof = str.indexOf('?', 1);
-    if (iof !== -1) {
-        return (req._parsedUrl = {
-            path: str,
-            href: str,
-            pathname: str.substring(0, iof),
-            query: str.substring(iof + 1),
-            search: str.substring(iof),
-            _raw: str
-        });
-    }
-    return (req._parsedUrl = {
-        path: str,
-        href: str,
-        pathname: str,
-        query: null,
-        search: null,
-        _raw: str
-    });
 }
 
 function parsebytes(arg: string | number) {
