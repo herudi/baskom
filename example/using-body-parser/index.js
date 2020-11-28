@@ -1,10 +1,15 @@
 const baskom = require('../../lib');
+const bodyParser = require('body-parser');
 
-const app = baskom();
+const app = baskom({
+    useDefaultBody: false
+});
 
-app.use(baskom.body());
-// or using option
-// app.use(baskom.body({ limit: '100kb' }));
+// parse application/x-www-form-urlencoded
+app.use(bodyParser.urlencoded({ extended: false }));
+ 
+// parse application/json
+app.use(bodyParser.json());
 
 app.post('/user', (req, res) => {
     console.log(req.body);

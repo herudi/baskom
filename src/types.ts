@@ -3,7 +3,9 @@ import { IncomingMessage, ServerResponse } from "http";
 export interface IApp {
     useParseUrl?: any;
     useDebugError?: boolean;
-    useParseQueryString?: any
+    useBodyLimit?: number | string;
+    useParseQueryString?: any;
+    useDefaultBody?: boolean;
 }
 
 export interface Request extends IncomingMessage {

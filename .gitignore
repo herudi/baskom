@@ -1,5 +1,6 @@
 /node_modules
 /lib
+/benchmarks
 /src/dev.ts
 yarn.lock
 wiki.md
@@ -10,6 +11,7 @@ note.txt
 /benchmark/node_modules
 /example/test
 /example/using-ts/node_modules
+/example/using-multer/node_modules
 /example/hello-world/node_modules
 /example/using-https/sslcert/test.crt
 /example/using-https/sslcert/test.key

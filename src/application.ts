@@ -2,33 +2,31 @@ import * as http from 'http';
 import * as pathnode from 'path';
 import Router from './router';
 import { parse as parsequery } from 'querystring';
-import { generalError, toPathx, findBase, getParamNames, wrap, parseurl, parsebody } from './utils';
+import { generalError, toPathx, findBase, getParamNames, wrap, parseurl, finalHandler } from './utils';
 import response from './response';
 import { IApp, Request, Response, Runner } from './types';
 import { TYPE } from './constant';
 
-let isUse = undefined;
+let isUse = undefined, midds = [], pmidds = {};
 
 export default class Application extends Router {
     private error: (err: any, req: Request, res: Response, run: Runner) => any;
-    private midds: any[];
     private notFound: any;
     private parsequery: any;
     private parseurl: any;
-    private pmidds: any;
-    constructor({ useParseQueryString, useParseUrl, useDebugError }: IApp = {}) {
+    private debugError: any;
+    private bodyLimit: any;
+    private defaultBody: any;
+    constructor({ useParseQueryString, useParseUrl, useDebugError, useBodyLimit, useDefaultBody }: IApp = {}) {
         super();
         this.requestHandler = this.requestHandler.bind(this);
+        this.debugError = useDebugError || false;
+        this.bodyLimit = useBodyLimit || '1mb';
+        this.defaultBody = useDefaultBody || true;
         this.error = generalError(useDebugError);
-        this.midds = [];
-        this.notFound = this.error.bind(null, { code: 404, name: 'NotFoundError', message: 'Not Found' });
-        this.pmidds = {};
+        this.notFound = this.error.bind(null, { code: 404, name: 'NotFoundError', message: 'Not Found Error' });
         this.parsequery = useParseQueryString || parsequery;
         this.parseurl = useParseUrl || parseurl;
-    }
-
-    parseBody({ limit }: { limit?: string | number } = {}) {
-        return parsebody({ limit, qs_parse: this.parsequery })
     }
 
     wrapFn(fn: any) {
@@ -59,7 +57,7 @@ export default class Application extends Router {
                 basedir: arg.basedir || 'views',
                 render: arg.render || _render
             }
-            this.midds.push((req: Request, res: Response, run: Runner) => {
+            midds.push((req: Request, res: Response, run: Runner) => {
                 res.render = function (pathfile: string, ...args: any) {
                     pathfile = pathnode.extname(pathfile) !== '' ? pathfile : pathfile + obj.ext;
                     if (obj.basedir !== '' || obj.basedir !== null) {
@@ -90,7 +88,7 @@ export default class Application extends Router {
                         this.routes = this.routes.concat(routes);
                     }
                 } else if (typeof el === 'function') {
-                    this.midds.push(wrap(el));
+                    midds.push(wrap(el));
                 }
             }
         } else if (Array.isArray(larg)) {
@@ -107,7 +105,7 @@ export default class Application extends Router {
                             this.routes = this.routes.concat(routes);
                         }
                     } else if (typeof el === 'function') {
-                        this.midds.push(wrap(el));
+                        midds.push(wrap(el));
                     }
                 }
             }
@@ -120,20 +118,20 @@ export default class Application extends Router {
                 if (Array.isArray(el)) {
                     pushFromArray(el, prefix_obj);
                 } else if (typeof el === 'function') {
-                    this.midds.push(wrap(el));
+                    midds.push(wrap(el));
                 }
             }
         } else {
             if (typeof arg === 'function') {
                 for (let i = 0; i < args.length; i++) {
                     let el = args[i];
-                    this.midds.push(wrap(el));
+                    midds.push(wrap(el));
                 }
             } else if (arg === '/' || arg === '') {
                 args.shift();
                 for (let i = 0; i < args.length; i++) {
                     let el = args[i];
-                    this.midds.push(wrap(el));
+                    midds.push(wrap(el));
                 }
             } else {
                 if (typeof arg === 'string' && arg.charAt(0) === '/') {
@@ -142,14 +140,14 @@ export default class Application extends Router {
                 }
                 for (let i = 0; i < args.length; i++) {
                     let el = args[i];
-                    let fixs = this.pmidds[prefix] || [];
+                    let fixs = pmidds[prefix] || [];
                     if (prefix) {
                         fixs.push((req: Request, res: Response, run: Runner) => {
                             req.url = req.url.substring(prefix.length) || '/';
                             req.path = req.path ? req.path.substring(prefix.length) || '/' : '/';
                             run();
                         });
-                        this.pmidds[prefix] = fixs.concat(el);
+                        pmidds[prefix] = fixs.concat(el);
                     }
                 }
             }
@@ -160,22 +158,25 @@ export default class Application extends Router {
     private requestHandler(req: Request, res: Response) {
         let url = this.parseurl(req),
             path = url.pathname,
+            onError = this.error,
             route = this.getRoute(req.method, path, this.notFound);
         response(res);
         req.originalUrl = req.originalUrl || req.url;
         req.query = this.parsequery(url.query);
         req.search = url.search;
         req.params = route.params;
-        if (!isUse) return route.handlers[0](req, res, (err?: any) => this.error(err, req, res, (val?: any) => {}));
-        let midds = this.midds, prefix = findBase(req.path = path);
-        if (this.pmidds[prefix]) {
-            midds = midds.concat(this.pmidds[prefix]);
-        }
-        midds = midds.concat(route.handlers);
-        let mlen = midds.length, j = 0;
-        let run = (err?: any) => err ? this.error(err, req, res, run) : execute();
-        let execute = () => (j < mlen) && midds[j++](req, res, run);
-        execute();
+        finalHandler(req, res, this.bodyLimit, this.parsequery, this.debugError, this.defaultBody, () => {
+            if (!isUse) return route.handlers[0](req, res, (err?: any) => onError(err, req, res, (val?: any) => {}));
+            let prefix = findBase(req.path = path);
+            if (pmidds[prefix]) {
+                midds = midds.concat(pmidds[prefix]);
+            }
+            midds = midds.concat(route.handlers);
+            let mlen = midds.length, j = 0;
+            let run = (err?: any) => err ? onError(err, req, res, run) : execute();
+            let execute = () => (j < mlen) && midds[j++](req, res, run);
+            execute();
+        });
     }
 
     server() {

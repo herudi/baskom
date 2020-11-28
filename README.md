@@ -1,6 +1,6 @@
 # Baskom js
 
-[![npm version](https://img.shields.io/badge/npm-0.0.8-blue.svg)](https://npmjs.org/package/baskom) 
+[![npm version](https://img.shields.io/badge/npm-0.0.9-blue.svg)](https://npmjs.org/package/baskom) 
 [![License](https://img.shields.io/:license-mit-blue.svg)](http://badges.mit-license.org)
 [![download-url](https://img.shields.io/npm/dm/baskom.svg)](https://npmjs.org/package/baskom)
 
@@ -8,12 +8,12 @@ The fun nodejs web framework with focus in speed, easy to use and low overhead.
 
 ## Features
 
-- Just Fast [See Benchmark](https://github.com/herudi/baskom/tree/master/benchmark)
-- Just ~40kb installed.
+- The Fast (2x faster than Express) [See Benchmark](https://github.com/herudi/baskom/tree/master/benchmark)
+- Just ~50kb installed.
 - Low dependencies.
 - Easy to use.
 - Easy configuration.
-- Express like and LOVE (you can use express middleware style like bodyParser, express-validator, multer and many more).
+- Express like and LOVE (you can use express middleware style like express-validator, multer and many more).
 
 ## Installation
 
@@ -35,6 +35,8 @@ baskom()
     })
     .get('/with-status', (req, res) => {
         res.code(201);
+        // or
+        // res.status(201);
         return 'with-status 201';
     })
     .get('/with-json', (req, res) => {
@@ -42,6 +44,11 @@ baskom()
     })
     .get('/with-param/:name', (req, res) => {
         return 'name ' + req.params.name;
+    })
+    .post('/with-post', (req, res) => {
+        console.log(req.body);
+        res.code(201);
+        return 'Created';
     })
     .get('/with-res-example', (req, res) => {
         // send text
@@ -54,7 +61,7 @@ baskom()
         res.type('text/html').send('<h1>Home</h1>');
 
         // send file stream
-        res.type('text/plain').sendFile(__dirname + '/test.txt');
+        res.sendFile(__dirname + '/test.html');
 
         // json
         res.json({ name: 'test' });
@@ -108,17 +115,17 @@ baskom()
 ```
 
 ## Body Parser
-### Using baskom body
-baskom, has a built-in body parser.
+### baskom, has a built-in body parser by default.
+
 ```js
 
 const baskom = require('baskom');
 
 const app = baskom();
-
-app.use(baskom.body());
-// or using option
-// app.use(baskom.body({ limit: '100kb'}));
+// or
+// const app = baskom({
+//     useBodyLimit: '100kb'
+// });
 
 app.post('/user', async (req, res) => {
     await saveUser(req.body);
@@ -144,7 +151,10 @@ yarn add body-parser
 const baskom = require('baskom');
 const bodyParser = require('body-parser');
 
-const app = baskom();
+const app = baskom({
+    // must set to false
+    useDefaultBody: false
+});
 
 // parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: false }))

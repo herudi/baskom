@@ -1,7 +1,8 @@
-import { TYPE } from './constant';
+import { MIME_TYPES, OCTET_TYPE, TYPE } from './constant';
 import { JSON_TYPE, TEXT_PLAIN_TYPE, FORM_URLENCODED_TYPE } from "./constant";
 import { parse as parsequery } from 'querystring';
 import { IParseBody, Request, Response, Runner } from './types';
+import * as path from 'path';
 
 function isTypeBodyPassed(header: any, _type) {
     return header[TYPE] && header[TYPE].indexOf(_type) !== -1;
@@ -16,26 +17,28 @@ export function getParamNames(func: Function) {
     return result;
 }
 
-export function generalError(useDebugError = false) {
-    return (err: any, req: Request, res: Response, run: Runner) => {
-        let code = err.code || err.status || err.statusCode || 500;
-        let stack: any;
-        if (useDebugError && err.stack) {
-            stack = err.stack.split('\n');
-            stack.shift();
-            stack = stack
-                .filter((line: string | string[]) => line.indexOf('node_modules') === -1)
-                .map((line: string) => line.trim());
-        }
-        let obj: any = {
-            statusCode: code,
-            name: err.name || 'UnknownError',
-            message: err.message || 'Something went wrong',
-            stack
-        }
-        res.statusCode = code;
-        return res.end(JSON.stringify(obj));
+function onError(err: any, res: Response, useDebugError: boolean) {
+    let code = err.code || err.status || err.statusCode || 500;
+    let stack: any;
+    if (useDebugError && err.stack) {
+        stack = err.stack.split('\n');
+        stack.shift();
+        stack = stack
+            .filter((line: string | string[]) => line.indexOf('node_modules') === -1)
+            .map((line: string) => line.trim());
     }
+    let obj: any = {
+        statusCode: code,
+        name: err.name || 'UnknownError',
+        message: err.message || 'Something went wrong',
+        stack
+    }
+    res.statusCode = code;
+    return res.end(JSON.stringify(obj));
+}
+
+export function generalError(useDebugError = false) {
+    return (err: any, req: Request, res: Response, run: Runner) => onError(err, res, useDebugError);
 }
 
 export function findBase(path: string) {
@@ -145,6 +148,62 @@ export function wrap(handler: any) {
     return isAsync ? asyncWrapFn(handler) : wrapFn(handler);
 };
 
+export function finalHandler(req: Request, res: Response, limit: number | string, qs_parse: any, useDebugError: boolean, defaultBody: boolean, cb: Function) {
+    let method = req.method;
+    if (method === 'GET') return cb();
+    if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
+        if (!defaultBody) return cb();
+        let header = req.headers;
+        if (isTypeBodyPassed(header, JSON_TYPE) ||
+            isTypeBodyPassed(header, TEXT_PLAIN_TYPE) ||
+            isTypeBodyPassed(header, FORM_URLENCODED_TYPE)
+        ) {
+            let data = [];
+            let error = null;
+            let lmt = parsebytes(limit);
+            let urlencode_parse = qs_parse || parsequery;
+            req.on('data', (chunk: Buffer) => {
+                let len = req.headers['content-length'] || Buffer.byteLength(chunk);
+                try {
+                    if (len > lmt) {
+                        throw new Error('Body is too large');
+                    } else {
+                        data.push(chunk);
+                    }
+                } catch (err) {
+                    error = err;
+                }
+            }).on('end', () => {
+                if (error) return onError(error, res, useDebugError);
+                let str = Buffer.concat(data).toString();
+                let body = null;
+                if (isTypeBodyPassed(header, JSON_TYPE)) {
+                    try {
+                        body = JSON.parse(str);
+                    } catch (err) {
+                        return onError(err, res, useDebugError);
+                    }
+                } else if (isTypeBodyPassed(header, TEXT_PLAIN_TYPE)) {
+                    body = str;
+                } else if (isTypeBodyPassed(header, FORM_URLENCODED_TYPE)) {
+                    try {
+                        body = urlencode_parse(str);
+                    } catch (err) {
+                        return onError(err, res, useDebugError);
+                    }
+                }
+                req._body = true;
+                req.body = body;
+                cb();
+            });
+        } else {
+            cb();
+        }
+    } else {
+        cb();
+    }
+}
+
 export function parsebody({ limit, qs_parse }: IParseBody = {}) {
     return function (req: Request, res: Response, run: Runner) {
         let dismethod = 'GET,DELETE';
@@ -213,4 +272,10 @@ function parsebytes(arg: string | number) {
     }
     return Math.floor(sizeList[unt] * val);
 }
+
+export function getMimeType(str: string) {
+    let types = MIME_TYPES;
+    str = path.extname(str).substring(1);
+    return types[str] || OCTET_TYPE;
+};
 
