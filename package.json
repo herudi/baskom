@@ -1,6 +1,6 @@
 {
     "name": "baskom",
-    "version": "0.0.9",
+    "version": "0.0.10",
     "description": "The fun nodejs web framework with focus in speed, easy to use and low overhead.",
     "main": "lib/index.js",
     "types": "lib/index.d.ts",

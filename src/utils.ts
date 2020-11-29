@@ -34,7 +34,8 @@ function onError(err: any, res: Response, useDebugError: boolean) {
         stack
     }
     res.statusCode = code;
-    return res.end(JSON.stringify(obj));
+    obj = JSON.stringify(obj);
+    return res.end(obj);
 }
 
 export function generalError(useDebugError = false) {
@@ -276,6 +277,7 @@ function parsebytes(arg: string | number) {
 export function getMimeType(str: string) {
     let types = MIME_TYPES;
     str = path.extname(str).substring(1);
+    str = str ? str.toLowerCase() : '3rt';
     return types[str] || OCTET_TYPE;
 };
 

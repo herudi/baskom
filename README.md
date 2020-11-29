@@ -1,6 +1,6 @@
 # Baskom js
 
-[![npm version](https://img.shields.io/badge/npm-0.0.9-blue.svg)](https://npmjs.org/package/baskom) 
+[![npm version](https://img.shields.io/badge/npm-0.0.10-blue.svg)](https://npmjs.org/package/baskom) 
 [![License](https://img.shields.io/:license-mit-blue.svg)](http://badges.mit-license.org)
 [![download-url](https://img.shields.io/npm/dm/baskom.svg)](https://npmjs.org/package/baskom)
 
@@ -45,12 +45,25 @@ baskom()
     .get('/with-param/:name', (req, res) => {
         return 'name ' + req.params.name;
     })
+    .get('/with-async', async (req, res) => {
+        let users = await model.findAllUser();
+        return { statusCode: 200, data: users };
+    })
+    .get('/with-promise', (req, res) => {
+        return new Promise((resolve, reject) => {
+            try {
+                resolve("ok");
+            } catch (error) {
+                reject(error);
+            }
+        });
+    })
     .post('/with-post', (req, res) => {
         console.log(req.body);
         res.code(201);
         return 'Created';
     })
-    .get('/with-res-example', (req, res) => {
+    .get('/with-res', (req, res) => {
         // send text
         res.send('test');
         // send json
@@ -63,7 +76,7 @@ baskom()
         // send file stream
         res.sendFile(__dirname + '/test.html');
 
-        // json
+        // send json
         res.json({ name: 'test' });
 
         // download
@@ -237,19 +250,22 @@ const baskom = require('baskom');
 
 const app = baskom();
 
-
 // baskom also safe without try and catch block
 app.get('/user', (req, res) => {
-    // findUser is not defined
-    findUser();
+    let data = findUser();
+    if (!data) {
+        throw new baskom.NotFoundError('Data Not Found');
+    }
     return 'Success';
 });
 
 // if you want using try and catch block
-app.get('/user', (req, res) => {
+app.get('/user2', (req, res) => {
     try {
-        // findUser is not defined
-        findUser();
+        let data = findUser();
+        if (!data) {
+            throw new baskom.NotFoundError('Data Not Found');
+        }
         return 'Success';
     } catch(err){
         // your logic if error here
@@ -263,15 +279,38 @@ app.use((err, req, res) => {
     return err.message;
 })
 
-// Not Found Error Handling
+// Not Found Route Error Handling
 app.use('*', (req, res, run) => {
     res.code(404);
-    return err.message;
+    return 'Url Not found';
 })
 
 app.listen(3000, () => {
     console.log('Running ' + 3000);
 });
+
+```
+
+## Custom Throw Error
+```js
+
+const { BaskomError } = require('baskom');
+
+class PaymentRequiredError extends BaskomError {
+    getCode() { return 402 };
+    getName() { return 'PaymentRequiredError' };
+}
+
+module.exports = PaymentRequiredError;
+
+// usage example
+...
+
+if (!payment) {
+    throw new PaymentRequiredError('Payment Required Error');
+}
+
+...
 ```
 
 ## Template Engine
