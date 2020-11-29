@@ -1,5 +1,5 @@
 # Benchmark
-Server => Nodejs v10.17.0, Ubuntu 16.04.6 LTS, Memory 16GB, Processor Intel(R) Xeon(R) Gold 6126 CPU @ 2.60GHz.
+Server => Nodejs v12.16.3, Ubuntu 16.04.6 LTS, Memory 16GB, Processor Intel(R) Xeon(R) Gold 6126 CPU @ 2.60GHz.
 <br></br>
 Usage => yarn bench
 |Frameworks |Version |Requests/sec |Latency |Throughput/Mb |
