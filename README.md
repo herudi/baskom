@@ -1,6 +1,6 @@
 # Baskom js
 
-[![npm version](https://img.shields.io/badge/npm-0.0.10-blue.svg)](https://npmjs.org/package/baskom) 
+[![npm version](https://img.shields.io/badge/npm-0.0.11-blue.svg)](https://npmjs.org/package/baskom) 
 [![License](https://img.shields.io/:license-mit-blue.svg)](http://badges.mit-license.org)
 [![download-url](https://img.shields.io/npm/dm/baskom.svg)](https://npmjs.org/package/baskom)
 
@@ -21,6 +21,22 @@ The fun nodejs web framework with focus in speed, easy to use and low overhead.
 $ npm install baskom
 //or
 $ yarn add baskom
+```
+
+## Simple Usage
+```js
+
+const baskom = require('baskom');
+
+baskom()
+    .get('/baskom', (req, res) => {
+        return 'baskom is simple';
+    })
+    .get('/with-res', (req, res) => {
+        res.send('baskom is simple');
+    })
+    .listen(3000);
+    
 ```
 
 ## Usage

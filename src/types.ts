@@ -21,6 +21,7 @@ export interface Request extends IncomingMessage {
 
 export interface Response extends ServerResponse {
     code: (code: number) => Response;
+    status: (code: number) => Response;
     type: (type: string) => Response;
     json: (data: any) => any;
     send: (data: any) => any;
