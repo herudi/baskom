@@ -1,7 +1,7 @@
 import { MIME_TYPES, OCTET_TYPE, TYPE } from './constant';
 import { JSON_TYPE, TEXT_PLAIN_TYPE, FORM_URLENCODED_TYPE } from "./constant";
 import { parse as parsequery } from 'querystring';
-import { IParseBody, Request, Response, Runner } from './types';
+import { Request, Response, Runner } from './types';
 import * as path from 'path';
 
 function isTypeBodyPassed(header: any, _type) {
@@ -202,57 +202,6 @@ export function finalHandler(req: Request, res: Response, limit: number | string
         }
     } else {
         cb();
-    }
-}
-
-export function parsebody({ limit, qs_parse }: IParseBody = {}) {
-    return function (req: Request, res: Response, run: Runner) {
-        let dismethod = 'GET,DELETE';
-        let header = req.headers;
-        if (dismethod.indexOf(req.method) === -1 && (
-            isTypeBodyPassed(header, JSON_TYPE) ||
-            isTypeBodyPassed(header, TEXT_PLAIN_TYPE) ||
-            isTypeBodyPassed(header, FORM_URLENCODED_TYPE)
-        )) {
-            let data = [];
-            let error = null;
-            let lmt = parsebytes(limit || '1mb');
-            let urlencode_parse = qs_parse || parsequery;
-            req.on('data', (chunk: Buffer) => {
-                let len = req.headers['content-length'] || Buffer.byteLength(chunk);
-                try {
-                    if (len > lmt) {
-                        throw new Error('Body is too large');
-                    } else {
-                        data.push(chunk);
-                    }
-                }
-                catch (err) {
-                    error = err;
-                }
-            }).on('end', () => {
-                if (error) {
-                    run(error);
-                } else {
-                    let str = Buffer.concat(data).toString();
-                    let body = null;
-                    if (isTypeBodyPassed(header, JSON_TYPE)) {
-                        body = JSON.parse(str);
-                    } else if (isTypeBodyPassed(header, TEXT_PLAIN_TYPE)) {
-                        body = str;
-                    } else if (isTypeBodyPassed(header, FORM_URLENCODED_TYPE)) {
-                        body = urlencode_parse(str);
-                    }
-                    req._body = true;
-                    req.body = body;
-                    run();
-                }
-            });
-        }
-        else {
-            run();
-        }
-
     }
 }
 

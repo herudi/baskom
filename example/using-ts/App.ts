@@ -7,7 +7,6 @@ export default class App {
     private app: Application;
     constructor() {
         this.app = baskom();
-        this.app.use(baskom.body());
         this.app.use('/api/v1', this.middleware, UserController);
     }
 

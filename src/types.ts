@@ -35,9 +35,3 @@ export interface Response extends ServerResponse {
 
 export interface Runner extends Function {};
 
-export interface IParseBody {
-    limit?: string | number;
-    qs_parse?: any;
-    method?: string;
-}
-

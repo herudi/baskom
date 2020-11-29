@@ -1,6 +1,6 @@
 # Baskom js
 
-[![npm version](https://img.shields.io/badge/npm-0.0.11-blue.svg)](https://npmjs.org/package/baskom) 
+[![npm version](https://img.shields.io/badge/npm-0.0.12-blue.svg)](https://npmjs.org/package/baskom) 
 [![License](https://img.shields.io/:license-mit-blue.svg)](http://badges.mit-license.org)
 [![download-url](https://img.shields.io/npm/dm/baskom.svg)](https://npmjs.org/package/baskom)
 
@@ -12,7 +12,6 @@ The fun nodejs web framework with focus in speed, easy to use and low overhead.
 - Just ~50kb installed.
 - Low dependencies.
 - Easy to use.
-- Easy configuration.
 - Express like and LOVE (you can use express middleware style like express-validator, multer and many more).
 
 ## Installation
@@ -46,9 +45,6 @@ baskom()
 const baskom = require('baskom');
 
 baskom()
-    .get('/baskom', (req, res) => {
-        return 'baskom is simple';
-    })
     .get('/with-status', (req, res) => {
         res.code(201);
         // or
@@ -111,6 +107,8 @@ baskom()
     });
 
 ```
+Method available => GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS, CONNECT, TRACE, ALL.
+
 For typescript see [example using ts](https://github.com/herudi/baskom/tree/master/example/using-ts)
 ## Middleware
 ```js
