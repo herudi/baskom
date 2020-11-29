@@ -12,7 +12,7 @@ Usage => yarn bench
 |Express|4.17.1|20792|4.7|4.24|
 
 ## Proof Screenshot
-<img src="https://raw.githubusercontent.com/herudi/baskom/main/benchmark/screenshot.png" alt="imagestea" />
+<img src="https://raw.githubusercontent.com/herudi/baskom/main/benchmark/screenshot-1.png" alt="imagestea" />
 
 ## License
 Big Thanks for original code benchmarking : [https://github.com/GetRayo/rayo.js/tree/master/packages/benchmarks](https://github.com/GetRayo/rayo.js/tree/master/packages/benchmarks)
