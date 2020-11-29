@@ -8,7 +8,7 @@ function foo(req, res, run){
 baskom()
     .use(foo)
     .get('/hello/:name', (req, res) => {
-        console.log(req.body);
+        console.log(req.foo);
         res.send('hello '+ req.params.name);
     })
     .get('/txt', (req, res) => {
@@ -16,6 +16,6 @@ baskom()
     })
     .post('/hello', (req, res) => {
         console.log(req.body)
-        res.send('hello');
+        return 'hello post';
     })
     .listen(3000);
