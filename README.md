@@ -28,11 +28,14 @@ $ yarn add baskom
 const baskom = require('baskom');
 
 baskom()
-    .get('/baskom', (req, res) => {
-        return 'baskom is simple';
+    .get('/simple', (req, res) => {
+        return 'horayy';
     })
-    .get('/with-res', (req, res) => {
-        res.send('baskom is simple');
+    .get('/send', (req, res) => {
+        res.send('horayy');
+    })
+    .get('/json', (req, res) => {
+        res.json({ name: 'herudi' });
     })
     .listen(3000);
     
