@@ -1,17 +1,18 @@
+import { Handler } from "./types";
 import { toPathx, wrap } from "./utils";
 
 export default class Router {
     routes: any[];
-    get: (path: string, ...args: any) => any;
-    post: (path: string, ...args: any) => any;
-    put: (path: string, ...args: any) => any;
-    delete: (path: string, ...args: any) => any;
-    patch: (path: string, ...args: any) => any;
-    head: any;
-    options: any;
-    connect: any;
-    trace: any;
-    all: (path: string, ...args: any) => any;
+    get: (path: string, ...args: Array<Handler | Handler[]>) => any;
+    post: (path: string, ...args: Array<Handler | Handler[]>) => any;
+    put: (path: string, ...args: Array<Handler | Handler[]>) => any;
+    delete: (path: string, ...args: Array<Handler | Handler[]>) => any;
+    patch: (path: string, ...args: Array<Handler | Handler[]>) => any;
+    head: (path: string, ...args: Array<Handler | Handler[]>) => any;
+    options: (path: string, ...args: Array<Handler | Handler[]>) => any;
+    connect: (path: string, ...args: Array<Handler | Handler[]>) => any;
+    trace: (path: string, ...args: Array<Handler | Handler[]>) => any;
+    all: (path: string, ...args: Array<Handler | Handler[]>) => any;
     constructor() {
         this.routes = [];
         this.get = this.on.bind(this, 'GET');
@@ -26,8 +27,8 @@ export default class Router {
         this.all = this.on.bind(this, 'ALL');
     }
 
-    on(method: string, path: string, ...args: any[]) {
-        let handlers = [], j = 0, i = 0;
+    on(method: string, path: string, ...args: Array<Handler | Handler[]>) {
+        let handlers: Array<Handler | Handler[]> = [], j = 0, i = 0;
         for (; i < args.length; i++) {
             let arg = args[i];
             if (Array.isArray(arg)) {
@@ -44,11 +45,11 @@ export default class Router {
     }
 
     getRoute(method: string, path: string, notFound: any) {
-        let i = 0, j = 0, el: any, routes = this.routes, isHead = method === 'HEAD';
+        let i = 0, j = 0, el: any, routes = this.routes;
         let matches = [], params = {}, handlers = [], len = routes.length;
         while (i < len) {
             el = routes[i];
-            if ((el.method === method || el.method === 'ALL' || isHead) && el.pathx.test(path)) {
+            if ((el.method === method || el.method === 'ALL') && el.pathx.test(path)) {
                 if (el.params.length > 0) {
                     matches = el.pathx.exec(path);
                     while (j < el.params.length) {

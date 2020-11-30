@@ -1,5 +1,6 @@
 import { IncomingMessage, ServerResponse } from "http";
 
+
 export interface IApp {
     useParseUrl?: any;
     useDebugError?: boolean;
@@ -33,5 +34,12 @@ export interface Response extends ServerResponse {
     [key: string]: any;
 }
 
-export interface Runner extends Function {};
+export type Runner = (err?: any) => any;
+
+export type Handler = (
+    req: Request,
+    res: Response,
+    run: Runner
+) => any;
+
 

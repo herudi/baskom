@@ -5,7 +5,7 @@ function midd(req, res, run){
     run();
 }
 
-const app = baskom();
+const app = baskom;
 const router = baskom.router();
 
 router.get('/hello/:name', (req, res) => {
