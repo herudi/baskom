@@ -1,17 +1,17 @@
 # Baskom js
 
-[![npm version](https://img.shields.io/badge/npm-0.0.12-blue.svg)](https://npmjs.org/package/baskom) 
+[![npm version](https://img.shields.io/badge/npm-0.0.13-blue.svg)](https://npmjs.org/package/baskom) 
 [![License](https://img.shields.io/:license-mit-blue.svg)](http://badges.mit-license.org)
 [![download-url](https://img.shields.io/npm/dm/baskom.svg)](https://npmjs.org/package/baskom)
 
 The fun nodejs web framework with focus in speed, easy to use and low overhead.
+> Inspired by [Express](https://github.com/expressjs/express) and [Polka](https://github.com/lukeed/polka)
 
 ## Features
 
-- The Fast (2x faster than Express) [See Benchmark](https://github.com/herudi/baskom/tree/master/benchmark)
-- Just ~50kb installed.
-- Low dependencies.
-- Easy to use.
+- The Fast (60% faster than Express) [See Benchmark](https://github.com/herudi/baskom/tree/master/benchmark)
+- Small (just ~50kb installed with low dependencies).
+- Simple and easy to use.
 - Express like and LOVE (you can use express middleware style like express-validator, multer and many more).
 
 ## Installation

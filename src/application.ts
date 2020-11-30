@@ -7,8 +7,6 @@ import response from './response';
 import { IApp, Request, Response, Runner } from './types';
 import { TYPE } from './constant';
 
-let isUse = undefined, midds = [], pmidds = {};
-
 export default class Application extends Router {
     private error: (err: any, req: Request, res: Response, run: Runner) => any;
     private notFound: any;
@@ -16,6 +14,9 @@ export default class Application extends Router {
     private parseurl: any;
     private debugError: any;
     private bodyLimit: any;
+    private isUse: any;
+    private midds: any;
+    private pmidds: any;
     private defaultBody: any;
     constructor({ useParseQueryString, useParseUrl, useDebugError, useBodyLimit, useDefaultBody }: IApp = {}) {
         super();
@@ -27,19 +28,22 @@ export default class Application extends Router {
         this.notFound = this.error.bind(null, { code: 404, name: 'NotFoundError', message: 'Not Found Error' });
         this.parsequery = useParseQueryString || parsequery;
         this.parseurl = useParseUrl || parseurl;
+        this.isUse = undefined;
+        this.midds = [];
+        this.pmidds = {};
     }
 
     wrapFn(fn: any) {
         return wrap(fn);
     }
 
-    on(method: string, path: string, ...args: any[]){
-        if (args.length > 1 && isUse === void 0) isUse = 1;
+    on(method: string, path: string, ...args: any[]) {
+        if (args.length > 1 && this.isUse === undefined) this.isUse = 1;
         return super.on(method, path, ...args);
     }
 
     use(...args: any) {
-        if (isUse === void 0) isUse = 1;
+        if (this.isUse === void 0) this.isUse = 1;
         let arg = args[0];
         let larg = args[args.length - 1];
         let prefix = null;
@@ -57,7 +61,7 @@ export default class Application extends Router {
                 basedir: arg.basedir || 'views',
                 render: arg.render || _render
             }
-            midds.push((req: Request, res: Response, run: Runner) => {
+            this.midds.push((req: Request, res: Response, run: Runner) => {
                 res.render = function (pathfile: string, ...args: any) {
                     pathfile = pathnode.extname(pathfile) !== '' ? pathfile : pathfile + obj.ext;
                     if (obj.basedir !== '' || obj.basedir !== null) {
@@ -71,7 +75,7 @@ export default class Application extends Router {
             this.error = larg;
         } else if (arg === '*') {
             this.notFound = wrap(larg);
-        } else if (larg.routes) {
+        } else if (typeof larg === 'object' && larg.routes) {
             let prefix_obj = '';
             if (typeof arg === 'string' && arg.length > 1 && arg.charAt(0) === '/') {
                 prefix_obj = arg;
@@ -88,7 +92,7 @@ export default class Application extends Router {
                         this.routes = this.routes.concat(routes);
                     }
                 } else if (typeof el === 'function') {
-                    midds.push(wrap(el));
+                    this.midds.push(wrap(el));
                 }
             }
         } else if (Array.isArray(larg)) {
@@ -105,7 +109,7 @@ export default class Application extends Router {
                             this.routes = this.routes.concat(routes);
                         }
                     } else if (typeof el === 'function') {
-                        midds.push(wrap(el));
+                        this.midds.push(wrap(el));
                     }
                 }
             }
@@ -118,20 +122,20 @@ export default class Application extends Router {
                 if (Array.isArray(el)) {
                     pushFromArray(el, prefix_obj);
                 } else if (typeof el === 'function') {
-                    midds.push(wrap(el));
+                    this.midds.push(wrap(el));
                 }
             }
         } else {
             if (typeof arg === 'function') {
                 for (let i = 0; i < args.length; i++) {
                     let el = args[i];
-                    midds.push(wrap(el));
+                    this.midds.push(wrap(el));
                 }
             } else if (arg === '/' || arg === '') {
                 args.shift();
                 for (let i = 0; i < args.length; i++) {
                     let el = args[i];
-                    midds.push(wrap(el));
+                    this.midds.push(wrap(el));
                 }
             } else {
                 if (typeof arg === 'string' && arg.charAt(0) === '/') {
@@ -140,14 +144,14 @@ export default class Application extends Router {
                 }
                 for (let i = 0; i < args.length; i++) {
                     let el = args[i];
-                    let fixs = pmidds[prefix] || [];
+                    let fixs = this.pmidds[prefix] || [];
                     if (prefix) {
                         fixs.push((req: Request, res: Response, run: Runner) => {
                             req.url = req.url.substring(prefix.length) || '/';
                             req.path = req.path ? req.path.substring(prefix.length) || '/' : '/';
                             run();
                         });
-                        pmidds[prefix] = fixs.concat(el);
+                        this.pmidds[prefix] = fixs.concat(el);
                     }
                 }
             }
@@ -158,15 +162,27 @@ export default class Application extends Router {
     private requestHandler(req: Request, res: Response) {
         let url = this.parseurl(req),
             path = url.pathname,
+            method = req.method,
+            isUse = this.isUse,
             onError = this.error,
-            route = this.getRoute(req.method, path, this.notFound);
+            isUseGet = (!isUse && method === 'GET'),
+            route = this.getRoute(method, path, this.notFound);
         response(res);
         req.originalUrl = req.originalUrl || req.url;
         req.query = this.parsequery(url.query);
         req.search = url.search;
         req.params = route.params;
-        finalHandler(req, res, this.bodyLimit, this.parsequery, this.debugError, this.defaultBody, () => {
-            if (!isUse) return route.handlers[0](req, res, (err?: any) => onError(err, req, res, (val?: any) => {}));
+        if (isUseGet) {
+            route.handlers[0](req, res, (err?: any) => onError(err, req, res, (val?: any) => { }));
+            return;
+        };
+        let midds = this.midds,
+            pmidds = this.pmidds;
+        finalHandler(req, res, this.bodyLimit, this.parsequery, this.debugError, this.defaultBody, method, () => {
+            if (!isUse) {
+                route.handlers[0](req, res, (err?: any) => onError(err, req, res, (val?: any) => { }));
+                return;
+            }
             let prefix = findBase(req.path = path);
             if (pmidds[prefix]) {
                 midds = midds.concat(pmidds[prefix]);

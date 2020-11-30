@@ -95,7 +95,7 @@ export function parseurl(req: Request) {
             search = str.substring(i);
             break;
         }
-        i++;
+        ++i;
     }
     url = {};
     url.path = url._raw = url.href = str;
@@ -149,8 +149,7 @@ export function wrap(handler: any) {
     return isAsync ? asyncWrapFn(handler) : wrapFn(handler);
 };
 
-export function finalHandler(req: Request, res: Response, limit: number | string, qs_parse: any, useDebugError: boolean, defaultBody: boolean, cb: Function) {
-    let method = req.method;
+export function finalHandler(req: Request, res: Response, limit: number | string, qs_parse: any, useDebugError: boolean, defaultBody: boolean, method: any, cb: Function) {
     if (method === 'GET') return cb();
     if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
         if (!defaultBody) return cb();

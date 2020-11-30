@@ -44,11 +44,11 @@ export default class Router {
     }
 
     getRoute(method: string, path: string, notFound: any) {
-        let i = 0, j = 0, el: any, routes = this.routes;
+        let i = 0, j = 0, el: any, routes = this.routes, isHead = method === 'HEAD';
         let matches = [], params = {}, handlers = [], len = routes.length;
         while (i < len) {
             el = routes[i];
-            if ((method === el.method || el.method === 'HEAD' || el.method === 'ALL') && el.pathx.test(path)) {
+            if ((el.method === method || el.method === 'ALL' || isHead) && el.pathx.test(path)) {
                 if (el.params.length > 0) {
                     matches = el.pathx.exec(path);
                     while (j < el.params.length) {
