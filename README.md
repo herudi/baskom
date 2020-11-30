@@ -13,6 +13,7 @@ The fun nodejs web framework with focus in speed, easy to use and low overhead.
 - Small (just ~50kb installed with low dependencies).
 - Simple and easy to use.
 - Express like and LOVE (you can use express middleware style like express-validator, multer and many more).
+- Support (ssr framework) like [Nextjs](https://nextjs.org/), [Nuxtjs](https://nuxtjs.org/), [Sapper](https://sapper.svelte.dev/) and more. [See Example](https://github.com/herudi/baskom/tree/master/example)
 
 ## Installation
 
