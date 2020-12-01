@@ -1,4 +1,4 @@
-import * as baskom from 'baskom';
+import baskom from 'baskom';
 import Application from 'baskom/lib/application';
 import UserController from './UserController';
 import { Request, Response, Runner } from 'baskom/lib/types';

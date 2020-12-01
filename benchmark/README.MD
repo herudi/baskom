@@ -1,4 +1,5 @@
 # Benchmark
+
 Server => Nodejs v12.16.3, Ubuntu 16.04.6 LTS, Memory 16GB, Processor Intel(R) Xeon(R) Gold 6126 CPU @ 2.60GHz.
 <br></br>
 Usage => yarn bench
@@ -13,6 +14,8 @@ Usage => yarn bench
 
 ## Proof Screenshot
 <img src="https://raw.githubusercontent.com/herudi/baskom/main/benchmark/screenshot-1.png" alt="imagestea" />
+
+> Note => Choosing a framework, is not just speed but convenience when writing and lots of suitable libraries.
 
 ## License
 Big Thanks for original code benchmarking : [https://github.com/GetRayo/rayo.js/tree/master/packages/benchmarks](https://github.com/GetRayo/rayo.js/tree/master/packages/benchmarks)

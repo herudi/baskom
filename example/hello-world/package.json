@@ -9,5 +9,6 @@
   "license": "MIT",
   "devDependencies": {
     "nodemon": "^2.0.6"
-  }
+  },
+  "dependencies": {}
 }

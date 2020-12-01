@@ -1,6 +1,6 @@
 # Baskom js
 
-[![npm version](https://img.shields.io/badge/npm-0.0.14-blue.svg)](https://npmjs.org/package/baskom) 
+[![npm version](https://img.shields.io/badge/npm-0.0.15-blue.svg)](https://npmjs.org/package/baskom) 
 [![License](https://img.shields.io/:license-mit-blue.svg)](http://badges.mit-license.org)
 [![download-url](https://img.shields.io/npm/dm/baskom.svg)](https://npmjs.org/package/baskom)
 
@@ -12,8 +12,11 @@ The fun nodejs web framework with focus in speed, easy to use and low overhead.
 - The Fast (60% faster than Express) [See Benchmark](https://github.com/herudi/baskom/tree/master/benchmark)
 - Small (just ~50kb installed with low dependencies).
 - Simple and easy to use.
-- Express like and LOVE (you can use express middleware style like express-validator, multer and many more).
-- Support (ssr framework) like [Nextjs](https://nextjs.org/), [Nuxtjs](https://nuxtjs.org/), [Sapper](https://sapper.svelte.dev/) and more. [See Example](https://github.com/herudi/baskom/tree/master/example)
+- Express like and LOVE (you can use express middleware like multer, express-validator, serve-static and many more).
+- Support custom server for (ssr framework) [Nextjs](https://nextjs.org/), [Nuxtjs](https://nuxtjs.org/), [Sapper](https://sapper.svelte.dev/) and more. [See Example](https://github.com/herudi/baskom/tree/master/example)
+
+## Requerement
+Nodejs v8.x or higher
 
 ## Installation
 

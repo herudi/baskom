@@ -1,20 +1,19 @@
 const baskom = require('../../lib/index');
 
-function midd(req, res, run){
+function midd(req, res, run) {
     req.user = 'herudi';
     run();
 }
-
-const app = baskom;
+const app = baskom();
 const router = baskom.router();
 
 router.get('/hello/:name', (req, res) => {
     console.log(req.user);
-    res.send('hello '+ req.params.name);
+    res.send('hello ' + req.params.name);
 });
 
 router.get('/txt', (req, res) => {
-    res.sendFile(__dirname+'/test.txt');
+    res.sendFile(__dirname + '/test.txt');
 });
 
 router.post('/hello', (req, res) => {
