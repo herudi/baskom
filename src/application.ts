@@ -2,7 +2,7 @@ import * as http from 'http';
 import * as pathnode from 'path';
 import Router from './router';
 import { parse as parsequery } from 'querystring';
-import { generalError, toPathx, findBase, getParamNames, wrap, parseurl, finalHandler } from './utils';
+import { generalError, toPathx, findBase, getParamNames, wrap, parseurl, finalHandler, getError, wrapError } from './utils';
 import response from './response';
 import { IApp, Request, Response, Runner } from './types';
 import { TYPE } from './constant';
@@ -35,6 +35,12 @@ export default class Application extends Router {
 
     wrapFn(fn: any) {
         return wrap(fn);
+    }
+
+    getError(err: any, req: Request, res: Response) {
+        let data = getError(err, this.debugError, req);
+        res.code(data.statusCode);
+        return data;
     }
 
     on(method: string, path: string, ...args: any[]) {
@@ -72,7 +78,7 @@ export default class Application extends Router {
                 run();
             });
         } else if (typeof arg === 'function' && (getParamNames(arg)[0] === 'err' || getParamNames(arg)[0] === 'error' || getParamNames(arg).length === 4)) {
-            this.error = larg;
+            this.error = wrapError(larg);
         } else if (arg === '*') {
             this.notFound = wrap(larg);
         } else if (typeof larg === 'object' && larg.routes) {

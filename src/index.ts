@@ -2,7 +2,7 @@ import App from "./application";
 import Router from "./router";
 import { IApp } from "./types";
 import { BadRequestError, ServiceUnavailableError, NotImplementedError, ConflictError, UnprocessableEntityError, BaskomError, ForbiddenError, UnauthorizedError, NotFoundError, MethodNotAllowedError, UnsupportedMediaTypeError, InternalServerError, BadGatewayError } from './error';
-import { wrap } from "./utils";
+import {  wrap } from "./utils";
 
 const baskom = ({ useParseQueryString, useParseUrl, useDebugError, useBodyLimit, useDefaultBody }: IApp = {}) => new App({ useParseQueryString, useParseUrl, useDebugError, useBodyLimit, useDefaultBody });
 baskom.router = () => new Router();

@@ -18,24 +18,37 @@ export function getParamNames(func: Function) {
 }
 
 function onError(err: any, res: Response, useDebugError: boolean) {
+    let obj: any = getError(err, useDebugError);
+    res.statusCode = obj.statusCode;
+    obj = JSON.stringify(obj);
+    return res.end(obj);
+}
+
+export function getError(err: any, useDebugError: boolean = false, req?: Request) {
     let code = err.code || err.status || err.statusCode || 500;
-    let stack: any;
+    let debug: any;
     if (useDebugError && err.stack) {
-        stack = err.stack.split('\n');
+        let stack = err.stack.split('\n');
         stack.shift();
         stack = stack
             .filter((line: string | string[]) => line.indexOf('node_modules') === -1)
             .map((line: string) => line.trim());
+        debug = {
+            stack,
+            request: req ? {
+                method: req.method,
+                uri: req.originalUrl || req.url,
+                body: req.body,
+                headers: req.headers || req.header
+            } : undefined
+        }
     }
-    let obj: any = {
+    return {
         statusCode: code,
         name: err.name || 'UnknownError',
         message: err.message || 'Something went wrong',
-        stack
-    }
-    res.statusCode = code;
-    obj = JSON.stringify(obj);
-    return res.end(obj);
+        debug
+    };
 }
 
 export function generalError(useDebugError = false) {
@@ -147,6 +160,40 @@ async function withPromise(handler: any, res: Response, run: Runner) {
 export function wrap(handler: any) {
     const isAsync = handler.constructor.name === "AsyncFunction";
     return isAsync ? asyncWrapFn(handler) : wrapFn(handler);
+};
+
+function asyncWrapErrorFn(handler: any) {
+    return async function (err: any, req: Request, res: Response, run: Runner) {
+        try {
+            let fn = await handler(err, req, res, run);
+            if (fn) {
+                if (typeof fn === 'string') res.end(fn);
+                else res.json(fn);
+            };
+        } catch (err) {
+            run(err);
+        }
+    }
+}
+
+function wrapErrorFn(handler: any) {
+    return function (err: any, req: Request, res: Response, run: Runner) {
+        try {
+            let fn = handler(err, req, res, run);
+            if (fn) {
+                if (typeof fn === 'string') res.end(fn);
+                else if (typeof fn.then === 'function') return withPromise(fn, res, run);
+                else res.json(fn);
+            };
+        } catch (err) {
+            run(err);
+        }
+    }
+}
+
+export function wrapError(handler: any) {
+    const isAsync = handler.constructor.name === "AsyncFunction";
+    return isAsync ? asyncWrapErrorFn(handler) : wrapErrorFn(handler);
 };
 
 export function finalHandler(req: Request, res: Response, limit: number | string, qs_parse: any, useDebugError: boolean, defaultBody: boolean, method: any, cb: Function) {

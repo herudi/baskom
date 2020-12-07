@@ -1,6 +1,6 @@
 # Baskom js
 
-[![npm version](https://img.shields.io/badge/npm-0.0.15-blue.svg)](https://npmjs.org/package/baskom) 
+[![npm version](https://img.shields.io/badge/npm-0.0.16-blue.svg)](https://npmjs.org/package/baskom) 
 [![License](https://img.shields.io/:license-mit-blue.svg)](http://badges.mit-license.org)
 [![download-url](https://img.shields.io/npm/dm/baskom.svg)](https://npmjs.org/package/baskom)
 
@@ -117,6 +117,7 @@ baskom()
 Method available => GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS, CONNECT, TRACE, ALL.
 
 For typescript see [example using ts](https://github.com/herudi/baskom/tree/master/example/using-ts)
+
 ## Middleware
 ```js
 
@@ -145,6 +146,26 @@ baskom()
     .listen(3000, () => {
         console.log('Running ' + 3000);
     });
+
+```
+
+## Example Using Config
+
+```js
+
+const baskom = require('baskom');
+const qs = require('qs');
+const parseurl = require('parseurl');
+
+const app = baskom({
+    useParseQueryString: qs.parse,
+    useParseUrl: parseurl,
+    useDebugError: true,
+    useBodyLimit: '1mb',
+    useDefaultBody: true
+});
+
+...
 
 ```
 
@@ -298,6 +319,8 @@ app.get('/user2', (req, res) => {
 app.use((err, req, res) => {
     res.code(err.code || 500);
     return err.message;
+    // or auto get error
+    // return app.getError(err, req, res);
 })
 
 // Not Found Route Error Handling
