@@ -2,7 +2,7 @@ import * as http from 'http';
 import * as pathnode from 'path';
 import Router from './router';
 import { parse as parsequery } from 'querystring';
-import { generalError, toPathx, findBase, getParamNames, wrap, parseurl, finalHandler, getError, wrapError } from './utils';
+import { generalError, toPathx, findBase, getParamNames, wrap, parseurl, finalHandler, getError, wrapError, defaultRenderEngine } from './utils';
 import response from './response';
 import { IApp, Request, Response, Runner } from './types';
 import { TYPE } from './constant';
@@ -17,6 +17,7 @@ export default class Application extends Router {
     private isUse: any;
     private midds: any;
     private pmidds: any;
+    private engine: any;
     private defaultBody: any;
     constructor({ useParseQueryString, useParseUrl, useDebugError, useBodyLimit, useDefaultBody }: IApp = {}) {
         super();
@@ -31,6 +32,7 @@ export default class Application extends Router {
         this.isUse = undefined;
         this.midds = [];
         this.pmidds = {};
+        this.engine = {};
     }
 
     wrapFn(fn: any) {
@@ -53,30 +55,23 @@ export default class Application extends Router {
         let arg = args[0];
         let larg = args[args.length - 1];
         let prefix = null;
-        if (typeof arg === 'object' && arg.engine) {
-            let _render = (res: Response, filename: any, ...args: any) => {
-                arg.engine.renderFile(filename, ...args, (err: any, html: any) => {
-                    if (err) throw new Error(err.message || 'Error View Something Went Wrong');
-                    res.setHeader(TYPE, res.getHeader(TYPE) || 'text/html');
-                    res.end(html);
-                });
-            }
-            let obj = {
-                engine: arg.engine,
-                ext: arg.ext,
-                basedir: arg.basedir || 'views',
-                render: arg.render || _render
-            }
-            this.midds.push((req: Request, res: Response, run: Runner) => {
-                res.render = function (pathfile: string, ...args: any) {
-                    pathfile = pathnode.extname(pathfile) !== '' ? pathfile : pathfile + obj.ext;
-                    if (obj.basedir !== '' || obj.basedir !== null) {
-                        pathfile = obj.basedir + '/' + pathfile;
-                    }
-                    return obj.render(res, pathfile, ...args);
-                };
-                run();
+        if (typeof arg === 'object' && (arg.engine || arg.render)) {
+            let obj: any = {};
+            obj.engine = (typeof arg.engine === 'string' ? require(arg.engine) : arg.engine);
+            obj.name = arg.name || (typeof arg.engine === 'string' ? arg.engine : 'html');
+            obj.ext = arg.ext || ('.' + obj.name);
+            obj.basedir = arg.basedir || 'views';
+            obj.options = arg.options;
+            obj.header = arg.header || {
+                'content-type': 'text/html'
+            };
+            obj.render = arg.render || defaultRenderEngine({
+                engine: obj.engine,
+                name: obj.name,
+                options: obj.options,
+                header: obj.header
             });
+            this.engine[obj.ext] = obj;
         } else if (typeof arg === 'function' && (getParamNames(arg)[0] === 'err' || getParamNames(arg)[0] === 'error' || getParamNames(arg).length === 4)) {
             this.error = wrapError(larg);
         } else if (arg === '*') {
@@ -173,7 +168,7 @@ export default class Application extends Router {
             onError = this.error,
             isUseGet = (!isUse && method === 'GET'),
             route = this.getRoute(method, path, this.notFound);
-        response(res);
+        response(res, this.engine);
         req.originalUrl = req.originalUrl || req.url;
         req.query = this.parsequery(url.query);
         req.search = url.search;

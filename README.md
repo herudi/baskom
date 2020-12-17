@@ -1,6 +1,6 @@
 # Baskom js
 
-[![npm version](https://img.shields.io/badge/npm-0.0.16-blue.svg)](https://npmjs.org/package/baskom) 
+[![npm version](https://img.shields.io/badge/npm-0.0.17-blue.svg)](https://npmjs.org/package/baskom) 
 [![License](https://img.shields.io/:license-mit-blue.svg)](http://badges.mit-license.org)
 [![download-url](https://img.shields.io/npm/dm/baskom.svg)](https://npmjs.org/package/baskom)
 
@@ -358,28 +358,29 @@ if (!payment) {
 ```
 
 ## Template Engine
-Example with ejs
-```bash
-npm install ejs --save
-// or
-yarn add ejs
-```
+Support popular template engine like ejs, handlebars, pug, mustache, nunjunks and more.
+
+Note : must install one of the template engines.
+
+[See example template engine](https://github.com/herudi/baskom/tree/master/example/using-template-engine)
+
 ```js
 const baskom = require('baskom');
-const ejs = require('ejs');
 
 const app = baskom();
 
-app.use({ engine: ejs, ext: '.ejs' });
+app.use({ engine: 'ejs' });
+// or
+// app.use({ engine: 'handlebars', ext: '.hbs' });
 // or custom
-// app.use({ 
-//     engine: ejs, 
-//     ext: '.ejs',
-//     basedir: 'views',
-//     render: (res, filename, ...args) => {
-//         ejs.renderFile(filename, ...args, (err, html) => {
-//             if (err) throw new Error(err.message || 'Error View Something Went Wrong');
-//             res.end(html);
+// app.use({
+//     engine: 'dustjs-linkedin',
+//     ext: '.dust',
+//     render(res, source, ...args) {
+//         let file = fs.readFileSync(source, 'utf8');
+//         this.engine.renderSource(file.toString(), ...args, (err, html) => {
+//             if (err) throw new Error('err render');
+//             res.type('text/html').send(html);
 //         });
 //     }
 // });
@@ -389,13 +390,11 @@ app.get('/hello', (req, res) => {
         name: 'John Doe'
     });
 });
-app.get('/test', (req, res) => {
-    res.render('test');
-});
 
 app.get('/redirect', (req, res) => {
     res.redirect('/hello');
 });
+
 app.listen(3000, () => {
     console.log('Running ' + 3000);
 });

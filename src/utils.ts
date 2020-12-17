@@ -3,6 +3,7 @@ import { JSON_TYPE, TEXT_PLAIN_TYPE, FORM_URLENCODED_TYPE } from "./constant";
 import { parse as parsequery } from 'querystring';
 import { Request, Response, Runner } from './types';
 import * as path from 'path';
+import * as fs from 'fs';
 
 function isTypeBodyPassed(header: any, _type) {
     return header[TYPE] && header[TYPE].indexOf(_type) !== -1;
@@ -275,4 +276,66 @@ export function getMimeType(str: string) {
     str = str ? str.toLowerCase() : '3rt';
     return types[str] || OCTET_TYPE;
 };
+
+export function defaultRenderEngine(obj: {
+    name: string;
+    engine: any;
+    header: any;
+    options?: any;
+}) {
+    return function (res: Response, source: any, ...args: any) {
+        try {
+            let result: any,
+                engine = obj.engine,
+                name = obj.name,
+                header = obj.header,
+                file = fs.readFileSync(source, 'utf8');
+            let type = header['content-type'] || header['Content-Type'] || res.getHeader(TYPE) || 'text/html';
+            header[TYPE] = type;
+            const renderOrCompile = (type: string) => {
+                if (type === 'compile') {
+                    let compile = engine.compile(file.toString());
+                    result = compile(...args, obj.options);
+                } else {
+                    result = engine.render(file.toString(), ...args, obj.options);
+                }
+            }
+            if (name === 'handlebars' || name === 'hbs') renderOrCompile('compile');
+            else if (name === 'pug') renderOrCompile('compile');
+            else if (name === 'vash') renderOrCompile('compile');
+            else if (name === 'ejs') renderOrCompile('render');
+            else if (name === 'mustache') renderOrCompile('render'); 
+            else if (name === 'nunjucks') {
+                result = engine.render(source, ...args, obj.options);
+            } else {
+                if (engine.compile) {
+                    renderOrCompile('compile');
+                    if (typeof result !== 'string') renderOrCompile('render');
+                    if (typeof result !== 'string') {
+                        return res.code(404).send('View engine not supported... please add custom render');
+                    }
+                    res.writeHead(res.statusCode, header);
+                    return res.send(result);
+                } else if (engine.render) {
+                    renderOrCompile('render');
+                    if (typeof result !== 'string') renderOrCompile('compile');
+                    if (typeof result !== 'string') {
+                        return res.code(404).send('View engine not supported... please add custom render');
+                    }
+                    res.writeHead(res.statusCode, header);
+                    return res.send(result);
+                }
+            }
+            if (typeof result !== 'string') {
+                return res.code(404).send('View engine not supported... please add custom render');
+            }
+            res.writeHead(res.statusCode, header);
+            return res.send(result);
+        } catch (error) {
+            return res.send(error || 'Something went wrong');
+        }
+
+    }
+
+}
 

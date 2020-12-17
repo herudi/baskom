@@ -1,0 +1,17 @@
+{
+  "name": "using-template-engine",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Herudi",
+  "license": "MIT",
+  "dependencies": {
+    "baskom": "^0.0.17",
+    "dustjs-linkedin": "^2.7.5",
+    "ejs": "^3.1.5",
+    "handlebars": "^4.7.6",
+    "mustache": "^4.1.0",
+    "nunjucks": "^3.2.2",
+    "pug": "^3.0.0",
+    "vash": "^0.13.0"
+  }
+}

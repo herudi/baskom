@@ -11,6 +11,7 @@ note.txt
 /benchmark/node_modules
 /example/test
 /example/using-ts/node_modules
+/example/using-template-engine/node_modules
 /example/using-multer/node_modules
 /example/hello-world/node_modules
 /example/using-https/sslcert/test.crt
@@ -18,5 +19,4 @@ note.txt
 /example/using-next-js/node_modules
 /example/using-serve-static/node_modules
 /example/using-nuxt-js/node_modules
-/example/using-ejs/node_modules
 /example/using-body-parser/node_modules

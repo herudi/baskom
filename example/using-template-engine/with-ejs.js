@@ -1,17 +1,12 @@
-const baskom = require('../../lib');
-const ejs = require('ejs');
-
+const baskom = require('baskom');
 const app = baskom();
 
-app.use({ engine: ejs, ext: '.ejs' });
+app.use({ engine: 'ejs' });
 
 app.get('/hello', (req, res) => {
     res.render('hello', {
         name: 'John Doe'
     });
-});
-app.get('/test', (req, res) => {
-    res.render('test');
 });
 
 app.get('/redirect', (req, res) => {

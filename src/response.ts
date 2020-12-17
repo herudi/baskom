@@ -5,7 +5,7 @@ import { JSON_CHARSET, OCTET_TYPE, TYPE } from "./constant";
 import { Response } from './types';
 import { getMimeType } from './utils';
 
-function response(res: Response) {
+function response(res: Response, engine: any) {
     res.code = function (code: number) {
         this.statusCode = code;
         return this;
@@ -54,5 +54,20 @@ function response(res: Response) {
             data.pipe(this);
         }
     }
+    res.render = function (pathfile, ...args) {
+        let idx = pathfile.indexOf('.');
+        let obj: any = {};
+        if (idx !== -1) {
+            let ext = pathfile.substring(idx);
+            obj = engine[ext];
+        } else {
+            obj = engine[Object.keys(engine)[0]];
+        }
+        pathfile = path.extname(pathfile) !== '' ? pathfile : pathfile + obj.ext;
+        if (obj.basedir !== '' || obj.basedir !== null) {
+            pathfile = obj.basedir + '/' + pathfile;
+        }
+        return obj.render(res, pathfile, ...args);
+    };
 }
 export default response;
