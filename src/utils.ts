@@ -27,6 +27,7 @@ function onError(err: any, res: Response, useDebugError: boolean) {
 
 export function getError(err: any, useDebugError: boolean = false, req?: Request) {
     let code = err.code || err.status || err.statusCode || 500;
+    if (typeof code !== "number") code = 500;
     let debug: any;
     if (useDebugError && err.stack) {
         let stack = err.stack.split('\n');
@@ -284,45 +285,41 @@ export function defaultRenderEngine(obj: {
     options?: any;
 }) {
     return function (res: Response, source: any, ...args: any) {
-        try {
-            let result: any,
-                engine = obj.engine,
-                name = obj.name,
-                header = obj.header,
-                file = fs.readFileSync(source, 'utf8');
-            let type = header['content-type'] || header['Content-Type'] || res.getHeader(TYPE) || 'text/html';
-            header[TYPE] = type;
-            const renderOrCompile = (type: string) => {
-                if (type === 'compile') {
-                    let compile = engine.compile(file.toString());
-                    result = compile(...args, obj.options);
-                } else {
-                    result = engine.render(file.toString(), ...args, obj.options);
-                }
-            }
-            if (name === 'handlebars' || name === 'hbs') renderOrCompile('compile');
-            else if (name === 'pug') renderOrCompile('compile');
-            else if (name === 'vash') renderOrCompile('compile');
-            else if (name === 'ejs') renderOrCompile('render');
-            else if (name === 'mustache') renderOrCompile('render');
-            else if (name === 'nunjucks') {
-                result = engine.render(source, ...args, obj.options);
+        let result: any,
+            engine = obj.engine,
+            name = obj.name,
+            header = obj.header,
+            file = fs.readFileSync(source, 'utf8');
+        let type = header['content-type'] || header['Content-Type'] || res.getHeader(TYPE) || 'text/html';
+        header[TYPE] = type;
+        const renderOrCompile = (type: string) => {
+            if (type === 'compile') {
+                let compile = engine.compile(file.toString());
+                result = compile(...args, obj.options);
             } else {
-                if (engine.render !== undefined && engine.compile !== undefined) {
-                    renderOrCompile('render');
-                    if (typeof result !== 'string') renderOrCompile('compile');
-                }
-                else if (engine.render !== undefined) renderOrCompile('render'); 
-                else if (engine.compile !== undefined) renderOrCompile('compile');
+                result = engine.render(file.toString(), ...args, obj.options);
             }
-            if (typeof result !== 'string') {
-                return res.code(404).send('View engine not supported... please add custom render');
-            }
-            res.writeHead(res.statusCode, header);
-            return res.send(result);
-        } catch (error) {
-            return res.send(error || 'Something went wrong');
         }
+        if (name === 'handlebars' || name === 'hbs') renderOrCompile('compile');
+        else if (name === 'pug') renderOrCompile('compile');
+        else if (name === 'vash') renderOrCompile('compile');
+        else if (name === 'ejs') renderOrCompile('render');
+        else if (name === 'mustache') renderOrCompile('render');
+        else if (name === 'nunjucks') {
+            result = engine.render(source, ...args, obj.options);
+        } else {
+            if (engine.render !== undefined && engine.compile !== undefined) {
+                renderOrCompile('render');
+                if (typeof result !== 'string') renderOrCompile('compile');
+            }
+            else if (engine.render !== undefined) renderOrCompile('render');
+            else if (engine.compile !== undefined) renderOrCompile('compile');
+        }
+        if (typeof result !== 'string') {
+            return res.code(404).send('View engine not supported... please add custom render');
+        }
+        res.writeHead(res.statusCode, header);
+        return res.send(result);
 
     }
 
