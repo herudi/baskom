@@ -304,27 +304,16 @@ export function defaultRenderEngine(obj: {
             else if (name === 'pug') renderOrCompile('compile');
             else if (name === 'vash') renderOrCompile('compile');
             else if (name === 'ejs') renderOrCompile('render');
-            else if (name === 'mustache') renderOrCompile('render'); 
+            else if (name === 'mustache') renderOrCompile('render');
             else if (name === 'nunjucks') {
                 result = engine.render(source, ...args, obj.options);
             } else {
-                if (engine.compile) {
-                    renderOrCompile('compile');
-                    if (typeof result !== 'string') renderOrCompile('render');
-                    if (typeof result !== 'string') {
-                        return res.code(404).send('View engine not supported... please add custom render');
-                    }
-                    res.writeHead(res.statusCode, header);
-                    return res.send(result);
-                } else if (engine.render) {
+                if (engine.render !== undefined && engine.compile !== undefined) {
                     renderOrCompile('render');
                     if (typeof result !== 'string') renderOrCompile('compile');
-                    if (typeof result !== 'string') {
-                        return res.code(404).send('View engine not supported... please add custom render');
-                    }
-                    res.writeHead(res.statusCode, header);
-                    return res.send(result);
                 }
+                else if (engine.render !== undefined) renderOrCompile('render'); 
+                else if (engine.compile !== undefined) renderOrCompile('compile');
             }
             if (typeof result !== 'string') {
                 return res.code(404).send('View engine not supported... please add custom render');
