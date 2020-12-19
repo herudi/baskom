@@ -1,6 +1,6 @@
 # Baskom js
 
-[![npm version](https://img.shields.io/badge/npm-0.0.19-blue.svg)](https://npmjs.org/package/baskom) 
+[![npm version](https://img.shields.io/badge/npm-0.0.20-blue.svg)](https://npmjs.org/package/baskom) 
 [![License](https://img.shields.io/:license-mit-blue.svg)](http://badges.mit-license.org)
 [![download-url](https://img.shields.io/npm/dm/baskom.svg)](https://npmjs.org/package/baskom)
 
@@ -17,7 +17,7 @@ The fun nodejs web framework with focus in speed, easy to use and low overhead.
 - Support custom server for (ssr framework) [Nextjs](https://nextjs.org/), [Nuxtjs](https://nuxtjs.org/), [Sapper](https://sapper.svelte.dev/) and more. [See Example](https://github.com/herudi/baskom/tree/master/example)
 
 ## Requerement
-Nodejs v8.x or higher
+Nodejs v6.x or higher
 
 ## Installation
 
@@ -361,7 +361,7 @@ if (!payment) {
 ## Template Engine
 Support popular template engine like ejs, handlebars, pug, mustache, nunjunks and more.
 
-Note : must install one of the template engines.
+Note : If multiple engine please give extension on res.render.
 
 [See example template engine](https://github.com/herudi/baskom/tree/master/example/using-template-engine)
 
@@ -373,6 +373,8 @@ const app = baskom();
 app.use({ engine: 'ejs' });
 // or
 // app.use({ engine: 'handlebars', ext: '.hbs' });
+// or
+// app.use({ engine: require('eta').renderFile, ext: '.eta' });
 // or custom
 // app.use({
 //     engine: 'dustjs-linkedin',

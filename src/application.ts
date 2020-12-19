@@ -5,7 +5,6 @@ import { parse as parsequery } from 'querystring';
 import { generalError, toPathx, findBase, getParamNames, wrap, parseurl, finalHandler, getError, wrapError, defaultRenderEngine } from './utils';
 import response from './response';
 import { IApp, Request, Response, Runner } from './types';
-import { TYPE } from './constant';
 
 export default class Application extends Router {
     private error: (err: any, req: Request, res: Response, run: Runner) => any;
@@ -57,10 +56,11 @@ export default class Application extends Router {
         let prefix = null;
         if (typeof arg === 'object' && (arg.engine || arg.render)) {
             let obj: any = {};
+            let defaultDir = pathnode.join(pathnode.dirname(require.main.filename || process.mainModule.filename), 'views');
             obj.engine = (typeof arg.engine === 'string' ? require(arg.engine) : arg.engine);
             obj.name = arg.name || (typeof arg.engine === 'string' ? arg.engine : 'html');
             obj.ext = arg.ext || ('.' + obj.name);
-            obj.basedir = arg.basedir || 'views';
+            obj.basedir = arg.basedir || defaultDir;
             obj.options = arg.options;
             obj.header = arg.header || {
                 'content-type': 'text/html'

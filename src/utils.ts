@@ -292,34 +292,49 @@ export function defaultRenderEngine(obj: {
             file = fs.readFileSync(source, 'utf8');
         let type = header['content-type'] || header['Content-Type'] || res.getHeader(TYPE) || 'text/html';
         header[TYPE] = type;
+        if (obj.options) args.push(obj.options);
         const renderOrCompile = (type: string) => {
             if (type === 'compile') {
-                let compile = engine.compile(file.toString());
-                result = compile(...args, obj.options);
+                let compile = engine.compile(file.toString(), {
+                    filename: source
+                });
+                result = compile(...args);
             } else {
-                result = engine.render(file.toString(), ...args, obj.options);
+                result = engine.render(file.toString(), ...args);
             }
         }
-        if (name === 'handlebars' || name === 'hbs') renderOrCompile('compile');
-        else if (name === 'pug') renderOrCompile('compile');
-        else if (name === 'vash') renderOrCompile('compile');
-        else if (name === 'ejs') renderOrCompile('render');
-        else if (name === 'mustache') renderOrCompile('render');
-        else if (name === 'nunjucks') {
-            result = engine.render(source, ...args, obj.options);
+        if (typeof engine === 'function') {
+            engine(source, ...args, (err: any, out: any) => {
+                if (err) throw err;
+                res.writeHead(res.statusCode, header);
+                return res.send(out);
+            });
+        } else if (engine.renderFile !== undefined) {
+            engine.renderFile(source, ...args, (err: any, out: any) => {
+                if (err) throw err;
+                res.writeHead(res.statusCode, header);
+                return res.send(out);
+            });
         } else {
-            if (engine.render !== undefined && engine.compile !== undefined) {
-                renderOrCompile('render');
-                if (typeof result !== 'string') renderOrCompile('compile');
+            if (name === 'handlebars' || name === 'vash') renderOrCompile('compile');
+            else if (name === 'mustache') renderOrCompile('render');
+            else if (name === 'nunjucks') {
+                engine.configure(source.replace(path.basename(source), ''), { autoescape: true });
+                result = engine.render(source, ...args);
+            } else {
+                if (engine.render !== undefined && engine.compile !== undefined) {
+                    renderOrCompile('render');
+                    if (typeof result !== 'string') renderOrCompile('compile');
+                }
+                else if (engine.render !== undefined) renderOrCompile('render');
+                else if (engine.compile !== undefined) renderOrCompile('compile');
             }
-            else if (engine.render !== undefined) renderOrCompile('render');
-            else if (engine.compile !== undefined) renderOrCompile('compile');
+            if (typeof result !== 'string') {
+                throw new Error('View engine not supported... please add custom render');
+            }
+            res.writeHead(res.statusCode, header);
+            return res.send(result);
         }
-        if (typeof result !== 'string') {
-            return res.code(404).send('View engine not supported... please add custom render');
-        }
-        res.writeHead(res.statusCode, header);
-        return res.send(result);
 
     }
 

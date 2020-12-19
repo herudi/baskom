@@ -1,1 +1,2 @@
 <h1>Hello eta, <%= it.name %></h1>
+<%~ E.includeFile('footer.html') %>

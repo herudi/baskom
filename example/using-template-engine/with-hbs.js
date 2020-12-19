@@ -1,14 +1,15 @@
 const baskom = require('baskom');
+const { readFileSync } = require('fs');
 
 const app = baskom();
 app.use({ 
     engine: 'handlebars', 
     ext: '.hbs',
     options: {
-        // testing helper
-        helpers: {
-            toUpper: function(text) {
-                return text.toUpperCase();
+        partials: {
+            footer: () => {
+                let file = readFileSync('views/footer.html');
+                return file.toString()
             }
         }
     }
