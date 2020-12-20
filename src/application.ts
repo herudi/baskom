@@ -2,7 +2,7 @@ import * as http from 'http';
 import * as pathnode from 'path';
 import Router from './router';
 import { parse as parsequery } from 'querystring';
-import { generalError, toPathx, findBase, getParamNames, wrap, parseurl, finalHandler, getError, wrapError, defaultRenderEngine } from './utils';
+import { generalError, toPathx, findBase, getParamNames, wrap, parseurl, finalHandler, getError, wrapError, defaultRenderEngine, findArgs } from './utils';
 import response from './response';
 import { IApp, Request, Response, Runner } from './types';
 
@@ -81,6 +81,7 @@ export default class Application extends Router {
             if (typeof arg === 'string' && arg.length > 1 && arg.charAt(0) === '/') {
                 prefix_obj = arg;
             }
+            let fns = findArgs(args, true);
             for (let i = 0; i < args.length; i++) {
                 let el = args[i];
                 if (typeof el === 'object') {
@@ -89,14 +90,14 @@ export default class Application extends Router {
                         for (let j = 0; j < routes.length; j++) {
                             routes[j].path = prefix_obj + routes[j].path;
                             routes[j].pathx = toPathx(routes[j].path).pathx;
+                            routes[j].handlers = fns.concat(routes[j].handlers);
                         }
                         this.routes = this.routes.concat(routes);
                     }
-                } else if (typeof el === 'function') {
-                    this.midds.push(wrap(el));
                 }
             }
         } else if (Array.isArray(larg)) {
+            let fns = findArgs(args, true);
             let pushFromArray = (_args: string | any[], _prefix_obj: string) => {
                 for (let i = 0; i < _args.length; i++) {
                     let el = _args[i];
@@ -106,11 +107,10 @@ export default class Application extends Router {
                             for (let j = 0; j < routes.length; j++) {
                                 routes[j].path = _prefix_obj + routes[j].path;
                                 routes[j].pathx = toPathx(routes[j].path).pathx;
+                                routes[j].handlers = fns.concat(routes[j].handlers);
                             }
                             this.routes = this.routes.concat(routes);
                         }
-                    } else if (typeof el === 'function') {
-                        this.midds.push(wrap(el));
                     }
                 }
             }
@@ -122,22 +122,14 @@ export default class Application extends Router {
                 let el = args[i];
                 if (Array.isArray(el)) {
                     pushFromArray(el, prefix_obj);
-                } else if (typeof el === 'function') {
-                    this.midds.push(wrap(el));
                 }
             }
         } else {
             if (typeof arg === 'function') {
-                for (let i = 0; i < args.length; i++) {
-                    let el = args[i];
-                    this.midds.push(wrap(el));
-                }
+                this.midds = this.midds.concat(findArgs(args));
             } else if (arg === '/' || arg === '') {
                 args.shift();
-                for (let i = 0; i < args.length; i++) {
-                    let el = args[i];
-                    this.midds.push(wrap(el));
-                }
+                this.midds = this.midds.concat(findArgs(args));
             } else {
                 if (typeof arg === 'string' && arg.charAt(0) === '/') {
                     prefix = arg === '/' ? '' : arg;

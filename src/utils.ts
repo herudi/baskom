@@ -57,10 +57,25 @@ export function generalError(useDebugError = false) {
     return (err: any, req: Request, res: Response, run: Runner) => onError(err, res, useDebugError);
 }
 
-export function findBase(path: string) {
-    let iof = path.indexOf('/', 1);
-    if (iof !== -1) return path.substring(0, iof);
-    return path;
+export function findBase(pathname: string) {
+    let iof = pathname.indexOf('/', 1);
+    if (iof !== -1) return pathname.substring(0, iof);
+    return pathname;
+}
+
+export function findArgs(arr: any, ifFn?: boolean) {
+    let _arr = [];
+    for (let i = 0; i < arr.length; i++) {
+        if (ifFn) {
+            if (typeof arr[i] === 'function') {
+                _arr.push(wrap(arr[i]));
+            }
+        }else {
+            _arr.push(wrap(arr[i]));
+        }
+        
+    }
+    return _arr;
 }
 
 export function toPathx(str: string | RegExp): any {
@@ -307,13 +322,13 @@ export function defaultRenderEngine(obj: {
             engine(source, ...args, (err: any, out: any) => {
                 if (err) throw err;
                 res.writeHead(res.statusCode, header);
-                return res.send(out);
+                res.send(out);
             });
         } else if (engine.renderFile !== undefined) {
             engine.renderFile(source, ...args, (err: any, out: any) => {
                 if (err) throw err;
                 res.writeHead(res.statusCode, header);
-                return res.send(out);
+                res.send(out);
             });
         } else {
             if (name === 'handlebars' || name === 'vash') renderOrCompile('compile');
