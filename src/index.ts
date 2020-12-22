@@ -1,7 +1,7 @@
 import App from "./application";
 import Router from "./router";
 import { IApp } from "./types";
-import { BadRequestError, ServiceUnavailableError, NotImplementedError, ConflictError, UnprocessableEntityError, BaskomError, ForbiddenError, UnauthorizedError, NotFoundError, MethodNotAllowedError, UnsupportedMediaTypeError, InternalServerError, BadGatewayError } from './error';
+import { BadRequestError, UnprocessableEntityError, BaskomError, ForbiddenError, UnauthorizedError, NotFoundError, MethodNotAllowedError, InternalServerError } from './error';
 import {  wrap } from "./utils";
 
 const baskom = ({ useParseQueryString, useParseUrl, useDebugError, useBodyLimit, useDefaultBody }: IApp = {}) => new App({ useParseQueryString, useParseUrl, useDebugError, useBodyLimit, useDefaultBody });
@@ -14,12 +14,7 @@ baskom.UnauthorizedError = UnauthorizedError;
 baskom.ForbiddenError = ForbiddenError;
 baskom.NotFoundError = NotFoundError;
 baskom.MethodNotAllowedError = MethodNotAllowedError;
-baskom.ConflictError = ConflictError;
-baskom.UnsupportedMediaTypeError = UnsupportedMediaTypeError;
 baskom.UnprocessableEntityError = UnprocessableEntityError;
 baskom.InternalServerError = InternalServerError;
-baskom.NotImplementedError = NotImplementedError;
-baskom.BadGatewayError = BadGatewayError;
-baskom.ServiceUnavailableError = ServiceUnavailableError;
 export = baskom;
 // export default baskom;

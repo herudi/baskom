@@ -1,6 +1,5 @@
 import { IncomingMessage, ServerResponse } from "http";
 
-
 export interface IApp {
     useParseUrl?: any;
     useDebugError?: boolean;

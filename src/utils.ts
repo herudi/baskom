@@ -70,10 +70,10 @@ export function findArgs(arr: any, ifFn?: boolean) {
             if (typeof arr[i] === 'function') {
                 _arr.push(wrap(arr[i]));
             }
-        }else {
+        } else {
             _arr.push(wrap(arr[i]));
         }
-        
+
     }
     return _arr;
 }
@@ -214,9 +214,12 @@ export function wrapError(handler: any) {
 };
 
 export function finalHandler(req: Request, res: Response, limit: number | string, qs_parse: any, useDebugError: boolean, defaultBody: boolean, method: any, cb: Function) {
-    if (method === 'GET') return cb();
-    if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
-        if (!defaultBody) return cb();
+    if (method === 'GET') cb(); 
+    else if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
+        if (!defaultBody) {
+            cb();
+            return;
+        };
         let header = req.headers;
         if (isTypeBodyPassed(header, JSON_TYPE) ||
             isTypeBodyPassed(header, TEXT_PLAIN_TYPE) ||
@@ -260,12 +263,8 @@ export function finalHandler(req: Request, res: Response, limit: number | string
                 req.body = body;
                 cb();
             });
-        } else {
-            cb();
-        }
-    } else {
-        cb();
-    }
+        } else cb();
+    } else cb();
 }
 
 function parsebytes(arg: string | number) {
@@ -297,6 +296,7 @@ export function defaultRenderEngine(obj: {
     name: string;
     engine: any;
     header: any;
+    settings: any;
     options?: any;
 }) {
     return function (res: Response, source: any, ...args: any) {
@@ -305,10 +305,9 @@ export function defaultRenderEngine(obj: {
             name = obj.name,
             header = obj.header,
             file = fs.readFileSync(source, 'utf8');
-        let type = header['content-type'] || header['Content-Type'] || res.getHeader(TYPE) || 'text/html';
-        header[TYPE] = type;
-        if (obj.options) args.push(obj.options);
+        header['Content-Type'] = header['Content-Type'] || header[TYPE] || res.getHeader(TYPE) || res.getHeader('Content-Type') || 'text/html; charset=utf-8';
         const renderOrCompile = (type: string) => {
+            if (obj.options) args.push(obj.options);
             if (type === 'compile') {
                 let compile = engine.compile(file.toString(), {
                     filename: source
@@ -318,23 +317,24 @@ export function defaultRenderEngine(obj: {
                 result = engine.render(file.toString(), ...args);
             }
         }
-        if (typeof engine === 'function') {
-            engine(source, ...args, (err: any, out: any) => {
+        if (typeof engine === 'function' || engine.renderFile !== undefined) {
+            let _engine = typeof engine === 'function' ? engine : engine.renderFile;
+            if (!args.length) {
+                args.push({ settings: obj.settings });
+            } else {
+                Object.assign(args[0], { settings: obj.settings });
+            }
+            _engine(source, ...args, (err: any, out: any) => {
                 if (err) throw err;
                 res.writeHead(res.statusCode, header);
-                res.send(out);
-            });
-        } else if (engine.renderFile !== undefined) {
-            engine.renderFile(source, ...args, (err: any, out: any) => {
-                if (err) throw err;
-                res.writeHead(res.statusCode, header);
-                res.send(out);
+                res.end(out);
             });
         } else {
             if (name === 'handlebars' || name === 'vash') renderOrCompile('compile');
             else if (name === 'mustache') renderOrCompile('render');
             else if (name === 'nunjucks') {
-                engine.configure(source.replace(path.basename(source), ''), { autoescape: true });
+                if (obj.options) args.push(obj.options);
+                engine.configure(path.dirname(source), { autoescape: true });
                 result = engine.render(source, ...args);
             } else {
                 if (engine.render !== undefined && engine.compile !== undefined) {

@@ -1,18 +1,18 @@
 # Baskom js
 
-[![npm version](https://img.shields.io/badge/npm-0.1.0-blue.svg)](https://npmjs.org/package/baskom) 
+[![npm version](https://img.shields.io/badge/npm-0.1.1-blue.svg)](https://npmjs.org/package/baskom) 
 [![License](https://img.shields.io/:license-mit-blue.svg)](http://badges.mit-license.org)
 [![download-url](https://img.shields.io/npm/dm/baskom.svg)](https://npmjs.org/package/baskom)
 
-The fun nodejs web framework with focus in speed, easy to use and low overhead.
+Fast and lightweight nodejs framework with easy to use.
 > Inspired by [Express](https://github.com/expressjs/express) and [Polka](https://github.com/lukeed/polka)
 
 ## Features
 
-- The Fast (60% faster than Express) [See Benchmark](https://github.com/herudi/baskom/tree/master/benchmark)
+- Fast (60% faster than Express) [See Benchmark](https://github.com/herudi/baskom/tree/master/benchmark)
 - Small (just ~50kb installed with low dependencies).
 - Simple and easy to use.
-- Support all template engine with custom render.
+- Support popular template engine (ejs, handlebars, pug, jsx and more).
 - Express like and LOVE (you can use express middleware like multer, express-validator, serve-static and many more).
 - Support custom server for (ssr framework) [Nextjs](https://nextjs.org/), [Nuxtjs](https://nuxtjs.org/), [Sapper](https://sapper.svelte.dev/) and more. [See Example](https://github.com/herudi/baskom/tree/master/example)
 
@@ -196,7 +196,7 @@ app.listen(3000, () => {
 ```
 
 ### Using library body parser
-use to install 
+Need to install 
 ```bash
 npm i body-parser
 // or
@@ -303,11 +303,11 @@ app.get('/user', (req, res) => {
 });
 
 // if you want using try and catch block
-app.get('/user2', (req, res) => {
+app.get('/sign', (req, res) => {
     try {
-        let data = findUser();
+        let data = authUser();
         if (!data) {
-            throw new baskom.NotFoundError('Data Not Found');
+            throw new baskom.UnauthorizedError('Unauthorized 401');
         }
         return 'Success';
     } catch(err){
@@ -319,7 +319,7 @@ app.get('/user2', (req, res) => {
 // Error Handling
 app.use((err, req, res) => {
     res.code(err.code || 500);
-    return err.message;
+    return err.message || 'something';
     // or auto get error
     // return app.getError(err, req, res);
 })
@@ -359,8 +359,6 @@ if (!payment) {
 ```
 
 ## Template Engine
-Support popular template engine like ejs, handlebars, pug, mustache, nunjunks and more.
-
 Note : If multiple engine please give extension on res.render.
 
 [See example template engine](https://github.com/herudi/baskom/tree/master/example/using-template-engine)
@@ -374,7 +372,13 @@ app.use({ engine: 'ejs' });
 // or
 // app.use({ engine: 'handlebars', ext: '.hbs' });
 // or
-// app.use({ engine: require('eta').renderFile, ext: '.eta' });
+// app.use({ 
+//     engine: require('eta').renderFile, 
+//     ext: '.eta',
+//     options: {
+//         'view cache': true
+//     }
+// });
 // or custom
 // app.use({
 //     engine: 'dustjs-linkedin',

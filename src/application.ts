@@ -20,14 +20,13 @@ export default class Application extends Router {
     private defaultBody: any;
     constructor({ useParseQueryString, useParseUrl, useDebugError, useBodyLimit, useDefaultBody }: IApp = {}) {
         super();
-        this.requestHandler = this.requestHandler.bind(this);
         this.debugError = useDebugError || false;
         this.bodyLimit = useBodyLimit || '1mb';
         this.defaultBody = useDefaultBody || true;
+        this.parseurl = useParseUrl || parseurl;
+        this.parsequery = useParseQueryString || parsequery;
         this.error = generalError(useDebugError);
         this.notFound = this.error.bind(null, { code: 404, name: 'NotFoundError', message: 'Not Found Error' });
-        this.parsequery = useParseQueryString || parsequery;
-        this.parseurl = useParseUrl || parseurl;
         this.isUse = undefined;
         this.midds = [];
         this.pmidds = {};
@@ -63,13 +62,17 @@ export default class Application extends Router {
             obj.basedir = arg.basedir || defaultDir;
             obj.options = arg.options;
             obj.header = arg.header || {
-                'content-type': 'text/html'
+                'Content-Type': 'text/html; charset=utf-8'
             };
             obj.render = arg.render || defaultRenderEngine({
                 engine: obj.engine,
                 name: obj.name,
                 options: obj.options,
-                header: obj.header
+                header: obj.header,
+                settings: {
+                    views: obj.basedir,
+                    ...(arg.options ? arg.options : {})
+                }
             });
             this.engine[obj.ext] = obj;
         } else if (typeof arg === 'function' && (getParamNames(arg)[0] === 'err' || getParamNames(arg)[0] === 'error' || getParamNames(arg).length === 4)) {
@@ -111,6 +114,8 @@ export default class Application extends Router {
                             }
                             this.routes = this.routes.concat(routes);
                         }
+                    } else if (typeof el === 'function') {
+                        this.midds.push(wrap(el));
                     }
                 }
             }
@@ -152,48 +157,38 @@ export default class Application extends Router {
         return this;
     }
 
-    private requestHandler(req: Request, res: Response) {
+    private requestListener(req: Request, res: Response) {
         let url = this.parseurl(req),
             path = url.pathname,
             method = req.method,
-            isUse = this.isUse,
-            onError = this.error,
-            isUseGet = (!isUse && method === 'GET'),
             route = this.getRoute(method, path, this.notFound);
         response(res, this.engine);
         req.originalUrl = req.originalUrl || req.url;
         req.query = this.parsequery(url.query);
         req.search = url.search;
         req.params = route.params;
-        if (isUseGet) {
-            route.handlers[0](req, res, (err?: any) => onError(err, req, res, (val?: any) => { }));
-            return;
-        };
-        let midds = this.midds,
-            pmidds = this.pmidds;
-        finalHandler(req, res, this.bodyLimit, this.parsequery, this.debugError, this.defaultBody, method, () => {
-            if (!isUse) {
-                route.handlers[0](req, res, (err?: any) => onError(err, req, res, (val?: any) => { }));
-                return;
-            }
-            let prefix = findBase(req.path = path);
-            if (pmidds[prefix]) {
-                midds = midds.concat(pmidds[prefix]);
+        if (this.isUse === void 0 && method === 'GET') route.handlers[0](req, res, (err?: any) => this.error(err, req, res, (val?: any) => { }));
+        else finalHandler(req, res, this.bodyLimit, this.parsequery, this.debugError, this.defaultBody, method, (function () {
+            let midds = this.midds, prefix = findBase(req.path = path);
+            if (this.pmidds[prefix] !== void 0) {
+                midds = midds.concat(this.pmidds[prefix]);
             }
             midds = midds.concat(route.handlers);
             let mlen = midds.length, j = 0;
-            let run = (err?: any) => err ? onError(err, req, res, run) : execute();
+            let run = (err?: any) => err ? this.error(err, req, res, run) : execute();
             let execute = () => (j < mlen) && midds[j++](req, res, run);
             execute();
-        });
+        }).bind(this));
     }
 
     server() {
-        return (req: Request, res: Response) => this.requestHandler(req, res);
+        return (req: Request, res: Response) => this.requestListener(req, res);
     }
 
     listen(...args: any) {
-        let server = http.createServer(this.requestHandler);
-        return server.listen(...args);
+        let server = http.createServer((req: Request, res: Response) => {
+            this.requestListener(req, res);
+        });
+        server.listen(...args);
     }
 }

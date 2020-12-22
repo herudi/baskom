@@ -43,14 +43,6 @@ export class MethodNotAllowedError extends BaskomError {
     getCode() { return 405 };
     getName() { return 'MethodNotAllowedError' };
 };
-export class ConflictError extends BaskomError {
-    getCode() { return 409 };
-    getName() { return 'ConflictError' };
-};
-export class UnsupportedMediaTypeError extends BaskomError {
-    getCode() { return 415 };
-    getName() { return 'UnsupportedMediaTypeError' };
-};
 export class UnprocessableEntityError extends BaskomError {
     getCode() { return 422 };
     getName() { return 'UnprocessableEntityError' };
@@ -58,16 +50,4 @@ export class UnprocessableEntityError extends BaskomError {
 export class InternalServerError extends BaskomError {
     getCode() { return 500 };
     getName() { return 'InternalServerError' };
-};
-export class NotImplementedError extends BaskomError {
-    getCode() { return 501 };
-    getName() { return 'NotImplementedError' };
-};
-export class BadGatewayError extends BaskomError {
-    getCode() { return 502 };
-    getName() { return 'BadGatewayError' };
-};
-export class ServiceUnavailableError extends BaskomError {
-    getCode() { return 503 };
-    getName() { return 'ServiceUnavailableError' };
 };

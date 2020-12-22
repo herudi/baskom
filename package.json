@@ -1,7 +1,7 @@
 {
     "name": "baskom",
-    "version": "0.1.0",
-    "description": "The fun nodejs web framework with focus in speed, easy to use and low overhead.",
+    "version": "0.1.1",
+    "description": "Fast and lightweight nodejs framework with easy to use.",
     "main": "lib/index.js",
     "types": "lib/index.d.ts",
     "scripts": {
@@ -19,6 +19,7 @@
     "author": "Herudi",
     "license": "MIT",
     "keywords": [
+        "Fast nodejs web framework",
         "Baskom js for nodejs web framework",
         "Express alternative nodejs framework",
         "Simple nodejs web framework"
