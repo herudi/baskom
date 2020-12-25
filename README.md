@@ -1,17 +1,16 @@
 # Baskom js
 
-[![npm version](https://img.shields.io/badge/npm-0.1.2-blue.svg)](https://npmjs.org/package/baskom) 
+[![npm version](https://img.shields.io/badge/npm-0.1.3-blue.svg)](https://npmjs.org/package/baskom) 
 [![License](https://img.shields.io/:license-mit-blue.svg)](http://badges.mit-license.org)
 [![download-url](https://img.shields.io/npm/dm/baskom.svg)](https://npmjs.org/package/baskom)
 
-Fast and lightweight nodejs framework with native http server.
+Fast and lightweight nodejs framework with easy to use.
 > Inspired by [Express](https://github.com/expressjs/express) and [Polka](https://github.com/lukeed/polka)
 
 ## Features
 
 - Fast (60% faster than Express) [See Benchmark](https://github.com/herudi/baskom/tree/master/benchmark)
-- Small (just ~30kb installed with low dependencies).
-- Simple and easy to use.
+- Small (just ~35kb installed).
 - Support popular template engine (ejs, handlebars, pug, jsx and more).
 - Express like and LOVE (you can use express middleware like multer, express-validator, serve-static and many more).
 - Support custom server for (ssr framework) [Nextjs](https://nextjs.org/), [Nuxtjs](https://nuxtjs.org/), [Sapper](https://sapper.svelte.dev/) and more. [See Example](https://github.com/herudi/baskom/tree/master/example)
@@ -106,7 +105,15 @@ app.get('/simple', bar, (req, res) => {
 app.listen(3000, () => {
     console.log('> Running on ' + 3000);
 });
-
+```
+Middleware support : 
+```js
+...
+app.use(mid1, mid2);
+app.use([mid1, mid2]);
+app.[METHODS](path, mid1, mid2, handler);
+app.[METHODS](path, [mid1, mid2], handler);
+...
 ```
 
 ## Example Using Config
@@ -124,7 +131,6 @@ const app = baskom({
     useBodyLimit: '1mb',
     useDefaultBody: true
 });
-
 ...
 
 ```
@@ -262,7 +268,7 @@ app.get('/user', (req, res) => {
 });
 
 // if you want using try and catch block
-app.get('/sign', (req, res) => {
+app.post('/sign', (req, res) => {
     try {
         let data = authUser();
         if (!data) {
