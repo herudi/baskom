@@ -1,16 +1,16 @@
 # Baskom js
 
-[![npm version](https://img.shields.io/badge/npm-0.1.1-blue.svg)](https://npmjs.org/package/baskom) 
+[![npm version](https://img.shields.io/badge/npm-0.1.2-blue.svg)](https://npmjs.org/package/baskom) 
 [![License](https://img.shields.io/:license-mit-blue.svg)](http://badges.mit-license.org)
 [![download-url](https://img.shields.io/npm/dm/baskom.svg)](https://npmjs.org/package/baskom)
 
-Fast and lightweight nodejs framework with easy to use.
+Fast and lightweight nodejs framework with native http server.
 > Inspired by [Express](https://github.com/expressjs/express) and [Polka](https://github.com/lukeed/polka)
 
 ## Features
 
 - Fast (60% faster than Express) [See Benchmark](https://github.com/herudi/baskom/tree/master/benchmark)
-- Small (just ~50kb installed with low dependencies).
+- Small (just ~30kb installed with low dependencies).
 - Simple and easy to use.
 - Support popular template engine (ejs, handlebars, pug, jsx and more).
 - Express like and LOVE (you can use express middleware like multer, express-validator, serve-static and many more).
@@ -27,96 +27,57 @@ $ npm install baskom
 $ yarn add baskom
 ```
 
-## Simple Usage
+## Usage
 ```js
 
 const baskom = require('baskom');
 
-baskom()
-    .get('/simple', (req, res) => {
-        return 'horayy';
-    })
-    .get('/send', (req, res) => {
-        res.send('horayy');
-    })
-    .get('/json', (req, res) => {
-        res.json({ name: 'herudi' });
-    })
-    .listen(3000);
+const app = baskom();
+
+app.get('/simple', (req, res) => {
+    return 'test';
+});
+
+app.get('/send', (req, res) => {
+    res.send('test');
+});
+
+app.get('/json', (req, res) => {
+    res.json({ name: 'herudi' });
+});
+
+app.listen(3000, () => {
+    console.log('> Running on ' + 3000);
+});
     
 ```
-
-## Usage
-
-```js
-
-const baskom = require('baskom');
-
-baskom()
-    .get('/with-status', (req, res) => {
-        res.code(201);
-        // or
-        // res.status(201);
-        return 'with-status 201';
-    })
-    .get('/with-json', (req, res) => {
-        return { name: 'herudi' };
-    })
-    .get('/with-param/:name', (req, res) => {
-        return 'name ' + req.params.name;
-    })
-    .get('/with-async', async (req, res) => {
-        let users = await model.findAllUser();
-        return { statusCode: 200, data: users };
-    })
-    .get('/with-promise', (req, res) => {
-        return new Promise((resolve, reject) => {
-            try {
-                resolve("ok");
-            } catch (error) {
-                reject(error);
-            }
-        });
-    })
-    .post('/with-post', (req, res) => {
-        console.log(req.body);
-        res.code(201);
-        return 'Created';
-    })
-    .get('/with-res', (req, res) => {
-        // send text
-        res.send('test');
-        // send json
-        res.send({ name: 'test' });
-        // send with status code
-        res.code(201).send('Created');
-        // send html
-        res.type('text/html').send('<h1>Home</h1>');
-
-        // send file stream
-        res.sendFile(__dirname + '/test.html');
-
-        // send json
-        res.json({ name: 'test' });
-
-        // download
-        res.download(__dirname + '/test.txt');
-
-        // redirect
-        res.redirect('/something');
-
-        // render view engine
-        res.render('test', {
-            name: 'yourname'
-        });
-    })
-    .listen(3000, () => {
-        console.log('Running ' + 3000);
-    });
-
-```
 Method available => GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS, CONNECT, TRACE, ALL.
-
+```js
+app[METHODS](path, ...handlers);
+```
+Available Response (http.ServerResponse)
+```js
+// send text
+res.send('test');
+// send json
+res.send({ name: 'test' });
+// send with status code
+res.code(201).send('Created');
+// send html
+res.type('text/html').send('<h1>Home</h1>');
+// send file stream
+res.sendFile(__dirname + '/test.html');
+// send json
+res.json({ name: 'test' });
+// download
+res.download(__dirname + '/test.txt');
+// redirect
+res.redirect('/something');
+// render view engine
+res.render('test', {
+    name: 'yourname'
+});
+```
 For typescript see [example using ts](https://github.com/herudi/baskom/tree/master/example/using-ts)
 
 ## Middleware
@@ -134,19 +95,17 @@ function bar(req, res, run){
     run();
 }
 
-baskom()
-    .use(foo)
-    .get('/baskom', bar, (req, res) => {
-        console.log(req.foo)
-        console.log(req.bar)
-        return 'Horrayy'
-    })
-    .get('/other', [mid1, mid2], (req, res) => {
-        return 'Horrayy'
-    })
-    .listen(3000, () => {
-        console.log('Running ' + 3000);
-    });
+const app = baskom();
+
+app.use(foo);
+
+app.get('/simple', bar, (req, res) => {
+    return 'test';
+});
+
+app.listen(3000, () => {
+    console.log('> Running on ' + 3000);
+});
 
 ```
 
@@ -375,7 +334,7 @@ app.use({ engine: 'ejs' });
 // app.use({ 
 //     engine: require('eta').renderFile, 
 //     ext: '.eta',
-//     options: {
+//     set: {
 //         'view cache': true
 //     }
 // });

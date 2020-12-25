@@ -54,9 +54,8 @@ function response(res: Response, engine: any) {
             data.pipe(this);
         }
     }
-    res.render = function (pathfile, ...args) {
-        let idx = pathfile.indexOf('.');
-        let obj: any = {};
+    res.render = function (pathfile: string, ...args: any) {
+        let idx = pathfile.indexOf('.'), obj: any = {};
         if (idx !== -1) {
             let ext = pathfile.substring(idx);
             obj = engine[ext];

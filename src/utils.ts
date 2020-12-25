@@ -1,5 +1,4 @@
-import { MIME_TYPES, OCTET_TYPE, TYPE } from './constant';
-import { JSON_TYPE, TEXT_PLAIN_TYPE, FORM_URLENCODED_TYPE } from "./constant";
+import { MIME_TYPES, OCTET_TYPE, TYPE, JSON_TYPE, TEXT_PLAIN_TYPE, FORM_URLENCODED_TYPE } from './constant';
 import { parse as parsequery } from 'querystring';
 import { Request, Response, Runner } from './types';
 import * as path from 'path';
@@ -10,10 +9,10 @@ function isTypeBodyPassed(header: any, _type) {
 }
 
 export function getParamNames(func: Function) {
-    let STRIP_COMMENTS = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/mg;
-    let ARGUMENT_NAMES = /([^\s,]+)/g;
-    let fnStr = func.toString().replace(STRIP_COMMENTS, '');
-    let result = fnStr.slice(fnStr.indexOf('(') + 1, fnStr.indexOf(')')).match(ARGUMENT_NAMES);
+    let STRIP_COMMENTS = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/mg,
+        ARGUMENT_NAMES = /([^\s,]+)/g,
+        fnStr = func.toString().replace(STRIP_COMMENTS, ''),
+        result = fnStr.slice(fnStr.indexOf('(') + 1, fnStr.indexOf(')')).match(ARGUMENT_NAMES);
     if (result === null) result = [];
     return result;
 }
@@ -67,35 +66,36 @@ export function findArgs(arr: any, ifFn?: boolean) {
     let _arr = [];
     for (let i = 0; i < arr.length; i++) {
         if (ifFn) {
-            if (typeof arr[i] === 'function') {
-                _arr.push(wrap(arr[i]));
-            }
-        } else {
-            _arr.push(wrap(arr[i]));
-        }
-
+            if (typeof arr[i] === 'function') _arr.push(wrap(arr[i]));
+        } else _arr.push(wrap(arr[i]));
     }
     return _arr;
 }
 
-export function toPathx(str: string | RegExp): any {
-    if (str instanceof RegExp) return str;
-    let buildopts = (p: string) => `(?:${p})?`;
-    let def_rgx = `/([^/]+?)`;
-    let params = [];
-    let arr = str.split(`/`);
+export function toPathx(str: string) {
+    let buildopts = (p: string) => `(?:${p})?`,
+        def_rgx = `/([^/]+?)`,
+        params = [],
+        arr = str.split(`/`);
     arr[0] || arr.shift();
-    let patterns = [];
-    for (let i = 0; i < arr.length; i++) {
-        let el = arr[i];
-        let fchar = el[0];
-        let lchar = el[el.length - 1];
+    let patterns = [],
+        len = arr.length,
+        i = 0,
+        el: string | string[],
+        fchar: string,
+        lchar: string,
+        in_opt: boolean,
+        in_arr: string | string[];
+    while (i < len) {
+        el = arr[i];
+        fchar = el[0];
+        lchar = el[el.length - 1];
         if (fchar === `*`) {
             params.push(`wild`);
             patterns.push(`/(.*)`);
         } else if (fchar === `:`) {
-            let in_opt = lchar === `?`;
-            let in_arr = el.substring(1, in_opt ? el.length - 1 : el.length)
+            in_opt = lchar === `?`;
+            in_arr = el.substring(1, in_opt ? el.length - 1 : el.length)
             if (in_arr[in_arr.length - 1] === `)`) {
                 let match = in_arr.match(/^([^(]+)(\(.+\))$/);
                 if (match) {
@@ -109,9 +109,9 @@ export function toPathx(str: string | RegExp): any {
         } else {
             patterns.push(`/` + el);
         }
+        i++;
     }
-    let pathx = new RegExp(`^` + patterns.join('') + `/?$`, `i`);
-    return { params, pathx };
+    return { params, pathx: new RegExp(`^` + patterns.join('') + `/?$`, `i`) };
 }
 
 export function parseurl(req: Request) {
@@ -135,35 +135,6 @@ export function parseurl(req: Request) {
     return (req._parsedUrl = url);
 }
 
-function asyncWrapFn(handler: any) {
-    return async function (req: Request, res: Response, run: Runner) {
-        try {
-            let fn = await handler(req, res, run);
-            if (fn) {
-                if (typeof fn === 'string') res.end(fn);
-                else res.json(fn);
-            };
-        } catch (err) {
-            run(err);
-        }
-    }
-}
-
-function wrapFn(handler: any) {
-    return function (req: Request, res: Response, run: Runner) {
-        try {
-            let fn = handler(req, res, run);
-            if (fn) {
-                if (typeof fn === 'string') res.end(fn);
-                else if (typeof fn.then === 'function') return withPromise(fn, res, run);
-                else res.json(fn);
-            };
-        } catch (err) {
-            run(err);
-        }
-    }
-}
-
 async function withPromise(handler: any, res: Response, run: Runner) {
     try {
         let fn = await handler;
@@ -176,11 +147,33 @@ async function withPromise(handler: any, res: Response, run: Runner) {
 
 export function wrap(handler: any) {
     const isAsync = handler.constructor.name === "AsyncFunction";
-    return isAsync ? asyncWrapFn(handler) : wrapFn(handler);
+    return isAsync ? async function (req: Request, res: Response, run: Runner) {
+        try {
+            let fn = await handler(req, res, run);
+            if (fn) {
+                if (typeof fn === 'string') res.end(fn);
+                else res.json(fn);
+            };
+        } catch (err) {
+            run(err);
+        }
+    } : function (req: Request, res: Response, run: Runner) {
+        try {
+            let fn = handler(req, res, run);
+            if (fn) {
+                if (typeof fn === 'string') res.end(fn);
+                else if (typeof fn.then === 'function') return withPromise(fn, res, run);
+                else res.json(fn);
+            };
+        } catch (err) {
+            run(err);
+        }
+    };
 };
 
-function asyncWrapErrorFn(handler: any) {
-    return async function (err: any, req: Request, res: Response, run: Runner) {
+export function wrapError(handler: any) {
+    const isAsync = handler.constructor.name === "AsyncFunction";
+    return isAsync ? async function (err: any, req: Request, res: Response, run: Runner) {
         try {
             let fn = await handler(err, req, res, run);
             if (fn) {
@@ -190,11 +183,7 @@ function asyncWrapErrorFn(handler: any) {
         } catch (err) {
             run(err);
         }
-    }
-}
-
-function wrapErrorFn(handler: any) {
-    return function (err: any, req: Request, res: Response, run: Runner) {
+    } : function (err: any, req: Request, res: Response, run: Runner) {
         try {
             let fn = handler(err, req, res, run);
             if (fn) {
@@ -205,16 +194,11 @@ function wrapErrorFn(handler: any) {
         } catch (err) {
             run(err);
         }
-    }
-}
-
-export function wrapError(handler: any) {
-    const isAsync = handler.constructor.name === "AsyncFunction";
-    return isAsync ? asyncWrapErrorFn(handler) : wrapErrorFn(handler);
+    };
 };
 
 export function finalHandler(req: Request, res: Response, limit: number | string, qs_parse: any, useDebugError: boolean, defaultBody: boolean, method: any, cb: Function) {
-    if (method === 'GET') cb(); 
+    if (method === 'GET') cb();
     else if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
         if (!defaultBody) {
             cb();
@@ -269,12 +253,8 @@ export function finalHandler(req: Request, res: Response, limit: number | string
 
 function parsebytes(arg: string | number) {
     let sizeList = { b: 1, kb: 1 << 10, mb: 1 << 20, gb: 1 << 30, tb: Math.pow(1024, 4), pb: Math.pow(1024, 5) }
-    if (typeof arg === 'number') {
-        return arg;
-    }
-    let arr = (/^((-|\+)?(\d+(?:\.\d+)?)) *(kb|mb|gb|tb|pb)$/i).exec(arg);
-    let val: any;
-    let unt = 'b';
+    if (typeof arg === 'number') return arg;
+    let arr = (/^((-|\+)?(\d+(?:\.\d+)?)) *(kb|mb|gb|tb|pb)$/i).exec(arg), val: any, unt = 'b';
     if (!arr) {
         val = parseInt(val, 10);
         unt = 'b';
@@ -319,11 +299,8 @@ export function defaultRenderEngine(obj: {
         }
         if (typeof engine === 'function' || engine.renderFile !== undefined) {
             let _engine = typeof engine === 'function' ? engine : engine.renderFile;
-            if (!args.length) {
-                args.push({ settings: obj.settings });
-            } else {
-                Object.assign(args[0], { settings: obj.settings });
-            }
+            if (!args.length) args.push({ settings: obj.settings }); 
+            else Object.assign(args[0], { settings: obj.settings });
             _engine(source, ...args, (err: any, out: any) => {
                 if (err) throw err;
                 res.writeHead(res.statusCode, header);

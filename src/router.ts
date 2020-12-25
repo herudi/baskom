@@ -1,4 +1,4 @@
-import { Handler } from "./types";
+import { Handler, TRoutes } from "./types";
 import { toPathx, wrap } from "./utils";
 
 export default class Router {
@@ -24,8 +24,8 @@ export default class Router {
         return this;
     }
     getRoute(method: string, path: string, notFound: any) {
-        let i = 0, j = 0, el: any, routes = this.routes;
-        let matches = [], params = {}, handlers = [], len = routes.length;
+        let i = 0, j = 0, el: TRoutes, routes = this.routes, 
+        matches = [], params = {}, handlers = [], len = routes.length;
         while (i < len) {
             el = routes[i];
             if ((el.method === method || el.method === 'ALL') && el.pathx.test(path)) {
@@ -36,6 +36,7 @@ export default class Router {
                     }
                 }
                 handlers = handlers.concat(el.handlers);
+                break;
             }
             ++i;
         }

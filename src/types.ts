@@ -35,6 +35,14 @@ export interface Response extends ServerResponse {
 
 export type Runner = (err?: any) => any;
 
+export type TRoutes = {
+    params: any[];
+    pathx: RegExp;
+    method: string;
+    path: string;
+    handlers: any[];
+};
+
 export type Handler = (
     req: Request,
     res: Response,

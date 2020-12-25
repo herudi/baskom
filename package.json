@@ -1,12 +1,13 @@
 {
     "name": "baskom",
-    "version": "0.1.1",
-    "description": "Fast and lightweight nodejs framework with easy to use.",
+    "version": "0.1.2",
+    "description": "Fast and lightweight nodejs framework with native http server.",
     "main": "lib/index.js",
     "types": "lib/index.d.ts",
     "scripts": {
         "clean": "rimraf lib",
         "build": "rimraf lib && tsc",
+        "build:ncc": "rimraf lib && ncc build src/index.ts -o lib -m",
         "dev": "ts-node-dev --respawn src/dev.ts"
     },
     "repository": {
@@ -26,6 +27,7 @@
     ],
     "devDependencies": {
         "@types/node": "^14.14.6",
+        "@vercel/ncc": "^0.26.1",
         "rimraf": "^3.0.2",
         "ts-node": "^9.0.0",
         "ts-node-dev": "^1.0.0",

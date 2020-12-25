@@ -1,4 +1,4 @@
-const baskom = require('../../lib/index');
+const baskom = require('../../lib');
 
 function midd(req, res, run) {
     req.user = 'herudi';

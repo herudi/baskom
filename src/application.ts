@@ -50,17 +50,16 @@ export default class Application extends Router {
 
     use(...args: any) {
         if (this.isUse === void 0) this.isUse = 1;
-        let arg = args[0];
-        let larg = args[args.length - 1];
-        let prefix = null;
+        let arg = args[0], larg = args[args.length - 1], prefix = null;
         if (typeof arg === 'object' && (arg.engine || arg.render)) {
-            let obj: any = {};
-            let defaultDir = pathnode.join(pathnode.dirname(require.main.filename || process.mainModule.filename), 'views');
+            let obj: any = {},
+                defaultDir = pathnode.join(pathnode.dirname(require.main.filename || process.mainModule.filename), 'views');
             obj.engine = (typeof arg.engine === 'string' ? require(arg.engine) : arg.engine);
             obj.name = arg.name || (typeof arg.engine === 'string' ? arg.engine : 'html');
             obj.ext = arg.ext || ('.' + obj.name);
             obj.basedir = arg.basedir || defaultDir;
             obj.options = arg.options;
+            obj.set = arg.set;
             obj.header = arg.header || {
                 'Content-Type': 'text/html; charset=utf-8'
             };
@@ -71,7 +70,7 @@ export default class Application extends Router {
                 header: obj.header,
                 settings: {
                     views: obj.basedir,
-                    ...(arg.options ? arg.options : {})
+                    ...(arg.set ? arg.set : {})
                 }
             });
             this.engine[obj.ext] = obj;
@@ -100,7 +99,10 @@ export default class Application extends Router {
                 }
             }
         } else if (Array.isArray(larg)) {
-            let fns = findArgs(args, true);
+            let fns = findArgs(args, true), prefix_obj = '';
+            if (typeof arg === 'string' && arg.length > 1 && arg.charAt(0) === '/') {
+                prefix_obj = arg;
+            }
             let pushFromArray = (_args: string | any[], _prefix_obj: string) => {
                 for (let i = 0; i < _args.length; i++) {
                     let el = _args[i];
@@ -118,10 +120,6 @@ export default class Application extends Router {
                         this.midds.push(wrap(el));
                     }
                 }
-            }
-            let prefix_obj = '';
-            if (typeof arg === 'string' && arg.length > 1 && arg.charAt(0) === '/') {
-                prefix_obj = arg;
             }
             for (let i = 0; i < args.length; i++) {
                 let el = args[i];
@@ -141,8 +139,7 @@ export default class Application extends Router {
                     args.shift();
                 }
                 for (let i = 0; i < args.length; i++) {
-                    let el = args[i];
-                    let fixs = this.pmidds[prefix] || [];
+                    let el = args[i], fixs = this.pmidds[prefix] || [];
                     if (prefix) {
                         fixs.push((req: Request, res: Response, run: Runner) => {
                             req.url = req.url.substring(prefix.length) || '/';
@@ -158,18 +155,15 @@ export default class Application extends Router {
     }
 
     private requestListener(req: Request, res: Response) {
-        let url = this.parseurl(req),
-            path = url.pathname,
-            method = req.method,
-            route = this.getRoute(method, path, this.notFound);
+        let url = this.parseurl(req), route = this.getRoute(req.method, url.pathname, this.notFound);
         response(res, this.engine);
         req.originalUrl = req.originalUrl || req.url;
         req.query = this.parsequery(url.query);
         req.search = url.search;
         req.params = route.params;
-        if (this.isUse === void 0 && method === 'GET') route.handlers[0](req, res, (err?: any) => this.error(err, req, res, (val?: any) => { }));
-        else finalHandler(req, res, this.bodyLimit, this.parsequery, this.debugError, this.defaultBody, method, (function () {
-            let midds = this.midds, prefix = findBase(req.path = path);
+        if (this.isUse === void 0 && req.method === 'GET') route.handlers[0](req, res, (err?: any) => this.error(err, req, res, (val?: any) => { }));
+        else finalHandler(req, res, this.bodyLimit, this.parsequery, this.debugError, this.defaultBody, req.method, (function () {
+            let midds = this.midds, prefix = findBase(req.path = url.pathname);
             if (this.pmidds[prefix] !== void 0) {
                 midds = midds.concat(this.pmidds[prefix]);
             }
@@ -185,10 +179,9 @@ export default class Application extends Router {
         return (req: Request, res: Response) => this.requestListener(req, res);
     }
 
-    listen(...args: any) {
-        let server = http.createServer((req: Request, res: Response) => {
-            this.requestListener(req, res);
-        });
-        server.listen(...args);
+    listen(port: number = 3000, ...args: any) {
+        let server = http.createServer(this.server());
+        server.listen(port, ...args);
+        return this;
     }
 }

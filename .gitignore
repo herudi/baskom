@@ -7,7 +7,6 @@ wiki.md
 .npmignore
 note.txt
 
-
 /benchmark/node_modules
 /example/test
 /example/using-ts/node_modules
