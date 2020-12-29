@@ -1,4 +1,5 @@
 const baskom = require('../../lib');
+const serveStatic = require('serve-static');
 
 function midd(req, res, run) {
     req.user = 'herudi';
@@ -22,6 +23,7 @@ router.post('/hello', (req, res) => {
 });
 
 app.use('/api', midd, router);
+app.use('/assets', serveStatic('public'));
 
 app.listen(3000, () => {
     console.log('> Running ' + 3000);

@@ -1,10 +1,14 @@
 import * as http from 'http';
 import * as pathnode from 'path';
+import * as cluster from 'cluster';
+import * as os from 'os';
 import Router from './router';
 import { parse as parsequery } from 'querystring';
 import { generalError, toPathx, findBase, getParamNames, wrap, parseurl, finalHandler, getError, wrapError, defaultRenderEngine, findArgs } from './utils';
 import response from './response';
 import { IApp, Request, Response, Runner } from './types';
+
+let preMethod = 'GET,POST';
 
 export default class Application extends Router {
     private error: (err: any, req: Request, res: Response, run: Runner) => any;
@@ -13,12 +17,14 @@ export default class Application extends Router {
     private parseurl: any;
     private debugError: any;
     private bodyLimit: any;
-    private isUse: any;
     private midds: any;
     private pmidds: any;
     private engine: any;
+    private workers: any;
     private defaultBody: any;
-    constructor({ useParseQueryString, useParseUrl, useDebugError, useBodyLimit, useDefaultBody }: IApp = {}) {
+    private cluster: any;
+    private mroute: any;
+    constructor({ useCluster, useParseQueryString, useParseUrl, useDebugError, useBodyLimit, useDefaultBody }: IApp = {}) {
         super();
         this.debugError = useDebugError || false;
         this.bodyLimit = useBodyLimit || '1mb';
@@ -27,13 +33,15 @@ export default class Application extends Router {
         this.parsequery = useParseQueryString || parsequery;
         this.error = generalError(useDebugError);
         this.notFound = this.error.bind(null, { code: 404, name: 'NotFoundError', message: 'Not Found Error' });
-        this.isUse = undefined;
         this.midds = [];
         this.pmidds = {};
         this.engine = {};
+        this.mroute = {};
+        this.workers = [];
+        this.cluster = useCluster;
     }
 
-    wrapFn(fn: any) {
+    wrapFn(fn: Function) {
         return wrap(fn);
     }
 
@@ -43,46 +51,44 @@ export default class Application extends Router {
         return data;
     }
 
-    on(method: string, path: string, ...args: any[]) {
-        if (args.length > 1 && this.isUse === undefined) this.isUse = 1;
-        return super.on(method, path, ...args);
-    }
-
     use(...args: any) {
-        if (this.isUse === void 0) this.isUse = 1;
         let arg = args[0], larg = args[args.length - 1], prefix = null;
-        if (typeof arg === 'object' && (arg.engine || arg.render)) {
-            let obj: any = {},
-                defaultDir = pathnode.join(pathnode.dirname(require.main.filename || process.mainModule.filename), 'views');
-            obj.engine = (typeof arg.engine === 'string' ? require(arg.engine) : arg.engine);
-            obj.name = arg.name || (typeof arg.engine === 'string' ? arg.engine : 'html');
-            obj.ext = arg.ext || ('.' + obj.name);
-            obj.basedir = arg.basedir || defaultDir;
-            obj.options = arg.options;
-            obj.set = arg.set;
-            obj.header = arg.header || {
-                'Content-Type': 'text/html; charset=utf-8'
+        if (typeof arg === 'object' && arg.engine) {
+            let defaultDir = pathnode.join(pathnode.dirname(require.main.filename || process.mainModule.filename), 'views'),
+                _ext = arg.ext,
+                _basedir = pathnode.resolve(arg.basedir || defaultDir),
+                _render = arg.render;
+            if (_render === void 0) {
+                let _engine = (typeof arg.engine === 'string' ? require(arg.engine) : arg.engine);
+                if (typeof _engine === 'object' && _engine.renderFile !== void 0) _engine = _engine.renderFile;
+                let _name = arg.name || (typeof arg.engine === 'string' ? arg.engine : 'html');
+                _ext = _ext || ('.' + _name);
+                if (_name === 'nunjucks') _engine.configure(_basedir, { autoescape: arg.autoescape || true });
+                _render = defaultRenderEngine({
+                    engine: _engine,
+                    name: _name,
+                    options: arg.options,
+                    header: arg.header || {
+                        'Content-Type': 'text/html; charset=utf-8'
+                    },
+                    settings: {
+                        views: _basedir,
+                        ...(arg.set ? arg.set : {})
+                    }
+                })
+            }
+            this.engine[_ext] = {
+                ext: _ext,
+                basedir: _basedir,
+                render: _render
             };
-            obj.render = arg.render || defaultRenderEngine({
-                engine: obj.engine,
-                name: obj.name,
-                options: obj.options,
-                header: obj.header,
-                settings: {
-                    views: obj.basedir,
-                    ...(arg.set ? arg.set : {})
-                }
-            });
-            this.engine[obj.ext] = obj;
         } else if (typeof arg === 'function' && (getParamNames(arg)[0] === 'err' || getParamNames(arg)[0] === 'error' || getParamNames(arg).length === 4)) {
             this.error = wrapError(larg);
         } else if (arg === '*') {
             this.notFound = wrap(larg);
         } else if (typeof larg === 'object' && larg.routes) {
             let prefix_obj = '';
-            if (typeof arg === 'string' && arg.length > 1 && arg.charAt(0) === '/') {
-                prefix_obj = arg;
-            }
+            if (typeof arg === 'string' && arg.length > 1 && arg.charAt(0) === '/') prefix_obj = arg;
             let fns = findArgs(args, true);
             for (let i = 0; i < args.length; i++) {
                 let el = args[i];
@@ -155,33 +161,53 @@ export default class Application extends Router {
     }
 
     private requestListener(req: Request, res: Response) {
-        let url = this.parseurl(req), route = this.getRoute(req.method, url.pathname, this.notFound);
+        let url = this.parseurl(req);
+        let cnt = 0; for (let k in this.mroute) cnt++;
+        if (cnt > 128) this.mroute = {};
+        let key = req.method + url.pathname,
+            route = this.mroute[key],
+            prefix = findBase(req.path = url.pathname);
+        if (route === void 0) {
+            route = this.getRoute(req.method, url.pathname, this.notFound);
+            if (preMethod.indexOf(req.method) !== -1) this.mroute[key] = route;
+        }
         response(res, this.engine);
         req.originalUrl = req.originalUrl || req.url;
         req.query = this.parsequery(url.query);
         req.search = url.search;
         req.params = route.params;
-        if (this.isUse === void 0 && req.method === 'GET') route.handlers[0](req, res, (err?: any) => this.error(err, req, res, (val?: any) => { }));
-        else finalHandler(req, res, this.bodyLimit, this.parsequery, this.debugError, this.defaultBody, req.method, (function () {
-            let midds = this.midds, prefix = findBase(req.path = url.pathname);
-            if (this.pmidds[prefix] !== void 0) {
-                midds = midds.concat(this.pmidds[prefix]);
-            }
-            midds = midds.concat(route.handlers);
-            let mlen = midds.length, j = 0;
-            let run = (err?: any) => err ? this.error(err, req, res, run) : execute();
-            let execute = () => (j < mlen) && midds[j++](req, res, run);
-            execute();
-        }).bind(this));
+        if (route.m === void 0) {
+            if (this.pmidds[prefix] !== void 0) route.handlers = this.pmidds[prefix].concat(route.handlers);
+            route.handlers = this.midds.concat(route.handlers);
+            route.m = true;
+            route.len = route.handlers.length;
+            if (preMethod.indexOf(req.method) !== -1) this.mroute[key] = route;
+        };
+        let mlen = route.len || route.handlers.length, i = 0;
+        let cb: Function = () => void (
+            (i < mlen) && route.handlers[i++](req, res, (err?: any) => err ? this.error(err, req, res, (_err?: any) => res.code(_err.code || 500).send(_err.stack || 'Something went wrong')) : cb())
+        );
+        finalHandler(req, res, this.bodyLimit, this.parsequery, this.debugError, this.defaultBody, req.method, cb);
     }
 
     server() {
-        return (req: Request, res: Response) => this.requestListener(req, res);
+        return (req: any, res: any) => this.requestListener(req, res);
     }
 
     listen(port: number = 3000, ...args: any) {
-        let server = http.createServer(this.server());
-        server.listen(port, ...args);
-        return this;
+        let cls: any = undefined;
+        if (typeof this.cluster === 'boolean' && this.cluster === true) cls = { numCPUs: os.cpus().length };
+        else if (typeof this.cluster === 'object') cls = this.cluster;
+        if (cls !== void 0 && cluster.isMaster) {
+            for (let i = 0; i < cls.numCPUs; i++) this.workers.push(cluster.fork());
+            cluster.on('exit', () => {
+                cluster.fork();
+                this.workers.push(cluster.fork());
+            });
+        } else {
+            http.createServer((req: Request, res: Response) => {
+                this.requestListener(req, res);
+            }).listen(port, ...args);
+        }
     }
 }

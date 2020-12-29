@@ -1,6 +1,6 @@
 # Baskom js
 
-[![npm version](https://img.shields.io/badge/npm-0.1.3-blue.svg)](https://npmjs.org/package/baskom) 
+[![npm version](https://img.shields.io/badge/npm-0.1.4-blue.svg)](https://npmjs.org/package/baskom) 
 [![License](https://img.shields.io/:license-mit-blue.svg)](http://badges.mit-license.org)
 [![download-url](https://img.shields.io/npm/dm/baskom.svg)](https://npmjs.org/package/baskom)
 
@@ -9,8 +9,8 @@ Fast and lightweight nodejs framework with easy to use.
 
 ## Features
 
-- Fast (60% faster than Express) [See Benchmark](https://github.com/herudi/baskom/tree/master/benchmark)
-- Small (just ~35kb installed).
+- Fast (50% ~ 60% faster than Express).
+- Small (just ~40kb installed).
 - Support popular template engine (ejs, handlebars, pug, jsx and more).
 - Express like and LOVE (you can use express middleware like multer, express-validator, serve-static and many more).
 - Support custom server for (ssr framework) [Nextjs](https://nextjs.org/), [Nuxtjs](https://nuxtjs.org/), [Sapper](https://sapper.svelte.dev/) and more. [See Example](https://github.com/herudi/baskom/tree/master/example)
@@ -54,7 +54,7 @@ Method available => GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS, CONNECT, TRACE
 ```js
 app[METHODS](path, ...handlers);
 ```
-Available Response (http.ServerResponse)
+Using Response (http.ServerResponse)
 ```js
 // send text
 res.send('test');
@@ -76,6 +76,23 @@ res.redirect('/something');
 res.render('test', {
     name: 'yourname'
 });
+// and more
+```
+
+Using Request (http.IncomingMessage)
+```js
+// body
+req.body
+// query => /path?name=john
+req.query
+// params => /path/:name/:date
+req.params
+// other
+req.originalUrl
+req.search
+req._parsedUrl
+req._body
+// and more
 ```
 For typescript see [example using ts](https://github.com/herudi/baskom/tree/master/example/using-ts)
 
@@ -84,21 +101,21 @@ For typescript see [example using ts](https://github.com/herudi/baskom/tree/mast
 
 const baskom = require('baskom');
 
-function foo(req, res, run){
+function mid1(req, res, run){
     req.foo = 'foo';
     run();
 }
 
-function bar(req, res, run){
+function mid2(req, res, run){
     req.bar = 'bar';
     run();
 }
 
 const app = baskom();
 
-app.use(foo);
+app.use(mid1);
 
-app.get('/simple', bar, (req, res) => {
+app.get('/simple', mid2, (req, res) => {
     return 'test';
 });
 
@@ -125,6 +142,7 @@ const qs = require('qs');
 const parseurl = require('parseurl');
 
 const app = baskom({
+    useCluster: true,
     useParseQueryString: qs.parse,
     useParseUrl: parseurl,
     useDebugError: true,
@@ -348,9 +366,9 @@ app.use({ engine: 'ejs' });
 // app.use({
 //     engine: 'dustjs-linkedin',
 //     ext: '.dust',
-//     render(res, source, ...args) {
+//     render: (res, source, ...args) => {
 //         let file = fs.readFileSync(source, 'utf8');
-//         this.engine.renderSource(file.toString(), ...args, (err, html) => {
+//         require('dustjs-linkedin').renderSource(file.toString(), ...args, (err, html) => {
 //             if (err) throw new Error('err render');
 //             res.type('text/html').send(html);
 //         });

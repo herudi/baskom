@@ -6,6 +6,12 @@ import { Response } from './types';
 import { getMimeType } from './utils';
 
 function response(res: Response, engine: any) {
+    res.set = function (name: string, value: string) {
+        res.setHeader(name, value);
+    };
+    res.get = function (name: string) {
+        return res.getHeader(name);
+    };
     res.code = function (code: number) {
         this.statusCode = code;
         return this;
@@ -54,17 +60,13 @@ function response(res: Response, engine: any) {
             data.pipe(this);
         }
     }
-    res.render = function (pathfile: string, ...args: any) {
-        let idx = pathfile.indexOf('.'), obj: any = {};
+    res.render = function (source: string, ...args: any) {
+        let idx = source.indexOf('.'),
+            obj: any = engine[Object.keys(engine)[0]],
+            pathfile = path.join(obj.basedir, source + obj.ext);
         if (idx !== -1) {
-            let ext = pathfile.substring(idx);
-            obj = engine[ext];
-        } else {
-            obj = engine[Object.keys(engine)[0]];
-        }
-        pathfile = path.extname(pathfile) !== '' ? pathfile : pathfile + obj.ext;
-        if (obj.basedir !== '' || obj.basedir !== null) {
-            pathfile = obj.basedir + '/' + pathfile;
+            obj = engine[source.substring(idx)];
+            pathfile = path.join(obj.basedir, source);
         }
         return obj.render(res, pathfile, ...args);
     };

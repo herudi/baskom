@@ -4,7 +4,7 @@ import { IApp } from "./types";
 import { BadRequestError, UnprocessableEntityError, BaskomError, ForbiddenError, UnauthorizedError, NotFoundError, MethodNotAllowedError, InternalServerError } from './error';
 import {  wrap } from "./utils";
 
-const baskom = ({ useParseQueryString, useParseUrl, useDebugError, useBodyLimit, useDefaultBody }: IApp = {}) => new App({ useParseQueryString, useParseUrl, useDebugError, useBodyLimit, useDefaultBody });
+const baskom = ({ useCluster, useParseQueryString, useParseUrl, useDebugError, useBodyLimit, useDefaultBody }: IApp = {}) => new App({ useCluster, useParseQueryString, useParseUrl, useDebugError, useBodyLimit, useDefaultBody });
 baskom.router = () => new Router();
 baskom.Router = Router;
 baskom.wrap = (fn: Function) => wrap(fn);

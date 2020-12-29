@@ -272,6 +272,13 @@ export function getMimeType(str: string) {
     return types[str] || OCTET_TYPE;
 };
 
+const mapEngine = {
+    'handlebars': 'compile',
+    'vash': 'compile',
+    'nunjucks': 'renderSource',
+    'mustache': 'render'
+}
+
 export function defaultRenderEngine(obj: {
     name: string;
     engine: any;
@@ -286,34 +293,28 @@ export function defaultRenderEngine(obj: {
             header = obj.header,
             file = fs.readFileSync(source, 'utf8');
         header['Content-Type'] = header['Content-Type'] || header[TYPE] || res.getHeader(TYPE) || res.getHeader('Content-Type') || 'text/html; charset=utf-8';
-        const renderOrCompile = (type: string) => {
-            if (obj.options) args.push(obj.options);
-            if (type === 'compile') {
-                let compile = engine.compile(file.toString(), {
-                    filename: source
-                });
-                result = compile(...args);
-            } else {
-                result = engine.render(file.toString(), ...args);
-            }
-        }
-        if (typeof engine === 'function' || engine.renderFile !== undefined) {
-            let _engine = typeof engine === 'function' ? engine : engine.renderFile;
-            if (!args.length) args.push({ settings: obj.settings }); 
-            else Object.assign(args[0], { settings: obj.settings });
-            _engine(source, ...args, (err: any, out: any) => {
+        if (obj.options) args.push(obj.options);
+        if (!args.length) args.push({ settings: obj.settings });
+        else Object.assign(args[0], { settings: obj.settings });
+        if (typeof engine === 'function') {
+            engine(source, ...args, (err: any, out: any) => {
                 if (err) throw err;
                 res.writeHead(res.statusCode, header);
                 res.end(out);
             });
         } else {
-            if (name === 'handlebars' || name === 'vash') renderOrCompile('compile');
-            else if (name === 'mustache') renderOrCompile('render');
-            else if (name === 'nunjucks') {
-                if (obj.options) args.push(obj.options);
-                engine.configure(path.dirname(source), { autoescape: true });
-                result = engine.render(source, ...args);
-            } else {
+            const renderOrCompile = (type: string) => {
+                if (type === 'compile') {
+                    let compile = engine.compile(file.toString(), {
+                        filename: source
+                    });
+                    result = compile(...args);
+                } 
+                else if (type === 'render') result = engine.render(file.toString(), ...args);
+                else if (type === 'renderSource') result = engine.render(source, ...args);
+            }
+            if (mapEngine[name] !== undefined) renderOrCompile(mapEngine[name]);
+            else {
                 if (engine.render !== undefined && engine.compile !== undefined) {
                     renderOrCompile('render');
                     if (typeof result !== 'string') renderOrCompile('compile');
