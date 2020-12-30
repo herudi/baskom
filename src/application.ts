@@ -9,6 +9,14 @@ import response from './response';
 import { IApp, Request, Response, Runner } from './types';
 
 let preMethod = 'GET,POST';
+function cleanup(mroute: any) {
+    let cnt = 0; for (let k in mroute) cnt++;
+    if (cnt > 64) mroute = {};
+}
+
+function lock(method: string, mroute: any, key: string, data: any){
+    if (preMethod.indexOf(method) !== -1 && data.nf !== void 0) mroute[key] = data;
+}
 
 export default class Application extends Router {
     private error: (err: any, req: Request, res: Response, run: Runner) => any;
@@ -162,31 +170,28 @@ export default class Application extends Router {
 
     private requestListener(req: Request, res: Response) {
         let url = this.parseurl(req);
-        let cnt = 0; for (let k in this.mroute) cnt++;
-        if (cnt > 128) this.mroute = {};
+        cleanup(this.mroute);
         let key = req.method + url.pathname,
-            route = this.mroute[key],
+            obj = this.mroute[key],
             prefix = findBase(req.path = url.pathname);
-        if (route === void 0) {
-            route = this.getRoute(req.method, url.pathname, this.notFound);
-            if (preMethod.indexOf(req.method) !== -1) this.mroute[key] = route;
+        if (obj === void 0) {
+            obj = this.getRoute(req.method, url.pathname, this.notFound);
+            lock(req.method, this.mroute, key, obj);
         }
         response(res, this.engine);
         req.originalUrl = req.originalUrl || req.url;
+        req.params = obj.params;
         req.query = this.parsequery(url.query);
         req.search = url.search;
-        req.params = route.params;
-        if (route.m === void 0) {
-            if (this.pmidds[prefix] !== void 0) route.handlers = this.pmidds[prefix].concat(route.handlers);
-            route.handlers = this.midds.concat(route.handlers);
-            route.m = true;
-            route.len = route.handlers.length;
-            if (preMethod.indexOf(req.method) !== -1) this.mroute[key] = route;
+        if (obj.m === void 0) {
+            if (this.pmidds[prefix] !== void 0) obj.handlers = this.pmidds[prefix].concat(obj.handlers);
+            obj.handlers = this.midds.concat(obj.handlers);
+            obj.m = true;
+            obj.len = obj.handlers.length;
+            lock(req.method, this.mroute, key, obj);
         };
-        let mlen = route.len || route.handlers.length, i = 0;
-        let cb: Function = () => void (
-            (i < mlen) && route.handlers[i++](req, res, (err?: any) => err ? this.error(err, req, res, (_err?: any) => res.code(_err.code || 500).send(_err.stack || 'Something went wrong')) : cb())
-        );
+        let mlen = obj.len, i = 0;
+        let cb: Function = () => (i < mlen) && obj.handlers[i++](req, res, (err?: any) => err ? this.error(err, req, res, (_err?: any) => res.code(_err.code || 500).send(_err.stack || 'Something went wrong')) : cb());
         finalHandler(req, res, this.bodyLimit, this.parsequery, this.debugError, this.defaultBody, req.method, cb);
     }
 

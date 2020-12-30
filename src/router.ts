@@ -8,7 +8,7 @@ export default class Router {
     constructor() {
         this.routes = [];
     }
-    
+
     call(method: string, path: string, ...handlers: Array<Handler | Handler[]>) {
         let fns: Array<Handler | Handler[]> = [], j = 0, i = 0;
         for (; i < handlers.length; i++) {
@@ -26,11 +26,12 @@ export default class Router {
         return this;
     }
     getRoute(method: string, path: string, notFound: any) {
-        let i = 0, j = 0, el: TRoutes, routes = this.routes, 
-        matches = [], params = {}, handlers = [], len = routes.length;
+        let i = 0, j = 0, el: TRoutes, routes = this.routes,
+            matches = [], params = {}, handlers = [], len = routes.length, nf: any;
         while (i < len) {
             el = routes[i];
             if ((el.method === method || el.method === 'ALL') && el.pathx.test(path)) {
+                nf = false;
                 if (el.params.length > 0) {
                     matches = el.pathx.exec(path);
                     while (j < el.params.length) params[el.params[j]] = matches[++j] || null;
@@ -41,7 +42,7 @@ export default class Router {
             i++;
         }
         handlers.push(notFound);
-        return { params, handlers };
+        return { params, handlers, nf };
     }
     connect(path: string, ...args: Array<Handler | Handler[]>) {
         return this.call('CONNECT', path, ...args);

@@ -1,6 +1,6 @@
 # Baskom js
 
-[![npm version](https://img.shields.io/badge/npm-0.1.4-blue.svg)](https://npmjs.org/package/baskom) 
+[![npm version](https://img.shields.io/badge/npm-0.1.5-blue.svg)](https://npmjs.org/package/baskom) 
 [![License](https://img.shields.io/:license-mit-blue.svg)](http://badges.mit-license.org)
 [![download-url](https://img.shields.io/npm/dm/baskom.svg)](https://npmjs.org/package/baskom)
 
@@ -142,7 +142,7 @@ const qs = require('qs');
 const parseurl = require('parseurl');
 
 const app = baskom({
-    useCluster: true,
+    useCluster: true, /* default false or no clustering */
     useParseQueryString: qs.parse,
     useParseUrl: parseurl,
     useDebugError: true,
