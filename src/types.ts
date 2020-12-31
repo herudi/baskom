@@ -1,4 +1,4 @@
-import { IncomingMessage, Server, ServerResponse } from "http";
+import { IncomingMessage, ServerResponse } from "http";
 
 export interface IApp {
     useParseUrl?: any;
@@ -6,7 +6,7 @@ export interface IApp {
     useBodyLimit?: number | string;
     useParseQueryString?: any;
     useDefaultBody?: boolean;
-    useServer?: Server;
+    useServer?: any;
 }
 
 export interface Request extends IncomingMessage {
