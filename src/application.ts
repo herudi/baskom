@@ -14,7 +14,7 @@ function cleanup(mroute: any) {
     if (cnt > 64) mroute = {};
 }
 
-function lock(method: string, mroute: any, key: string, data: any){
+function lock(method: string, mroute: any, key: string, data: any) {
     if (preMethod.indexOf(method) !== -1 && data.nf !== void 0) mroute[key] = data;
 }
 
@@ -30,9 +30,9 @@ export default class Application extends Router {
     private engine: any;
     private workers: any;
     private defaultBody: any;
-    private cluster: any;
     private mroute: any;
-    constructor({ useCluster, useParseQueryString, useParseUrl, useDebugError, useBodyLimit, useDefaultBody }: IApp = {}) {
+    private server: any;
+    constructor({ useServer, useParseQueryString, useParseUrl, useDebugError, useBodyLimit, useDefaultBody }: IApp = {}) {
         super();
         this.debugError = useDebugError || false;
         this.bodyLimit = useBodyLimit || '1mb';
@@ -46,7 +46,7 @@ export default class Application extends Router {
         this.engine = {};
         this.mroute = {};
         this.workers = [];
-        this.cluster = useCluster;
+        this.server = useServer || http.createServer();
     }
 
     wrapFn(fn: Function) {
@@ -195,24 +195,30 @@ export default class Application extends Router {
         finalHandler(req, res, this.bodyLimit, this.parsequery, this.debugError, this.defaultBody, req.method, cb);
     }
 
-    server() {
+    handler() {
         return (req: any, res: any) => this.requestListener(req, res);
     }
 
-    listen(port: number = 3000, ...args: any) {
-        let cls: any = undefined;
-        if (typeof this.cluster === 'boolean' && this.cluster === true) cls = { numCPUs: os.cpus().length };
-        else if (typeof this.cluster === 'object') cls = this.cluster;
-        if (cls !== void 0 && cluster.isMaster) {
-            for (let i = 0; i < cls.numCPUs; i++) this.workers.push(cluster.fork());
+    withCluster(...args: any) {
+        let opts: any = { numCPUs: os.cpus().length }, cb = args[0];
+        if (args[0] === 'object') {
+            opts = args[0];
+            cb = args[1];
+        }
+        if (cluster.isMaster) {
+            for (let i = 0; i < opts.numCPUs; i++) this.workers.push(cluster.fork());
             cluster.on('exit', () => {
                 cluster.fork();
                 this.workers.push(cluster.fork());
             });
-        } else {
-            http.createServer((req: Request, res: Response) => {
-                this.requestListener(req, res);
-            }).listen(port, ...args);
-        }
+        } else cb();
+    }
+
+    listen(port: number = 3000, ...args: any) {
+        const server = this.server;
+        server.on('request', (req: Request, res: Response) => {
+            this.requestListener(req, res);
+        });
+        server.listen(port, ...args);
     }
 }

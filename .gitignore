@@ -9,6 +9,7 @@ note.txt
 
 /benchmark/node_modules
 /example/test
+/example/using-custom-http/node_modules
 /example/using-ts/node_modules
 /example/using-template-engine/node_modules
 /example/using-multer/node_modules

@@ -1,15 +1,13 @@
 const baskom = require('../../lib');
-const http = require('http');
+const low = require('low-http-server');
 
-const app = baskom();
+const app = baskom({
+    useServer: low()
+});
 
 app.get('/hello', async (req, res) => {
     return { name: 'hello' };
 });
 
-const server = http.createServer(app.server());
-
-server.listen(3000, () => {
-    console.log('Running ' + 3000)
-})
+app.listen(3000);
 

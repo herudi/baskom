@@ -4,5 +4,7 @@
   "main": "index.js",
   "author": "Herudi",
   "license": "MIT",
-  "dependencies": {}
+  "dependencies": {
+    "low-http-server": "^2.1.1"
+  }
 }

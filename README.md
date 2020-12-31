@@ -1,6 +1,6 @@
 # Baskom js
 
-[![npm version](https://img.shields.io/badge/npm-0.1.5-blue.svg)](https://npmjs.org/package/baskom) 
+[![npm version](https://img.shields.io/badge/npm-0.1.6-blue.svg)](https://npmjs.org/package/baskom) 
 [![License](https://img.shields.io/:license-mit-blue.svg)](http://badges.mit-license.org)
 [![download-url](https://img.shields.io/npm/dm/baskom.svg)](https://npmjs.org/package/baskom)
 
@@ -138,16 +138,17 @@ app.[METHODS](path, [mid1, mid2], handler);
 ```js
 
 const baskom = require('baskom');
+const low = require('low-http-server');
 const qs = require('qs');
 const parseurl = require('parseurl');
 
 const app = baskom({
-    useCluster: true, /* default false or no clustering */
-    useParseQueryString: qs.parse,
-    useParseUrl: parseurl,
-    useDebugError: true,
-    useBodyLimit: '1mb',
-    useDefaultBody: true
+    useServer: low({}),             /* default native http server node */
+    useParseQueryString: qs.parse,  /* default native parse querystring node */
+    useParseUrl: parseurl,          /* default simple parseurl */
+    useDebugError: true,            /* default false */
+    useBodyLimit: '1mb',            /* default '1mb' */
+    useDefaultBody: true            /* default true */
 });
 ...
 
@@ -388,6 +389,26 @@ app.get('/redirect', (req, res) => {
 app.listen(3000, () => {
     console.log('Running ' + 3000);
 });
+```
+
+## Using Simple Cluster
+```js
+const baskom = require('baskom');
+const app = baskom();
+
+app.get('/test-cluster', (req, res) => {
+    return 'test';
+});
+
+app.withCluster(() => {
+    app.listen(3000)
+});
+
+// or
+// app.withCluster({ numCPUs: 8 }, () => {
+//     app.listen(3000)
+// });
+
 ```
 
 ## Static Serve Assets

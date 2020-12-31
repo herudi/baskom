@@ -7,7 +7,6 @@ export interface IApp {
     useParseQueryString?: any;
     useDefaultBody?: boolean;
     useServer?: Server;
-    useCluster?: any;
 }
 
 export interface Request extends IncomingMessage {

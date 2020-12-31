@@ -7,10 +7,11 @@ import { getMimeType } from './utils';
 
 function response(res: Response, engine: any) {
     res.set = function (name: string, value: string) {
-        res.setHeader(name, value);
+        this.setHeader(name, value);
+        return this;
     };
     res.get = function (name: string) {
-        return res.getHeader(name);
+        return this.getHeader(name);
     };
     res.code = function (code: number) {
         this.statusCode = code;
@@ -59,7 +60,7 @@ function response(res: Response, engine: any) {
             this.setHeader(content, this.getHeader(content) || 'attachment; filename=no-content-disposition.txt');
             data.pipe(this);
         }
-    }
+    };
     res.render = function (source: string, ...args: any) {
         let idx = source.indexOf('.'),
             obj: any = engine[Object.keys(engine)[0]],

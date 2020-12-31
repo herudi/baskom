@@ -14,12 +14,8 @@ export default class Router {
         for (; i < handlers.length; i++) {
             let arg = handlers[i];
             if (Array.isArray(arg)) {
-                for (; j < arg.length; j++) {
-                    fns.push(wrap(arg[j]));
-                }
-            } else {
-                fns.push(wrap(arg));
-            }
+                for (; j < arg.length; j++) fns.push(wrap(arg[j]));
+            } else fns.push(wrap(arg));
         }
         let el = toPathx(path);
         this.routes.push({ params: el.params, pathx: el.pathx, method, path, handlers: fns });
