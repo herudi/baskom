@@ -1,18 +1,17 @@
 # Baskom js
 
-[![npm version](https://img.shields.io/badge/npm-0.1.7-blue.svg)](https://npmjs.org/package/baskom) 
+[![npm version](https://img.shields.io/badge/npm-0.1.8-blue.svg)](https://npmjs.org/package/baskom) 
 [![License](https://img.shields.io/:license-mit-blue.svg)](http://badges.mit-license.org)
 [![download-url](https://img.shields.io/npm/dm/baskom.svg)](https://npmjs.org/package/baskom)
 
 Fast and lightweight nodejs framework with easy to use.
-> Inspired by [Express](https://github.com/expressjs/express) and [Polka](https://github.com/lukeed/polka)
 
 ## Features
 
-- Fast (50% ~ 60% faster than Express).
-- Small (just ~40kb installed).
+- Fast and small (just ~40kb installed) 🚀.
+- Robust router.
+- Support middleware like express (you can use express middleware like multer, body-parser,  express-validator, serve-static and many more).
 - Support popular template engine (ejs, handlebars, pug, jsx and more).
-- Express like and LOVE (you can use express middleware like multer, express-validator, serve-static and many more).
 - Support custom server for (ssr framework) [Nextjs](https://nextjs.org/), [Nuxtjs](https://nuxtjs.org/), [Sapper](https://sapper.svelte.dev/) and more. [See Example](https://github.com/herudi/baskom/tree/master/example)
 
 ## Requerement
@@ -21,7 +20,7 @@ Nodejs v6.x or higher
 ## Installation
 
 ```bash
-$ npm install baskom
+$ npm i baskom
 //or
 $ yarn add baskom
 ```
@@ -33,16 +32,18 @@ const baskom = require('baskom');
 
 const app = baskom();
 
-app.get('/simple', (req, res) => {
-    return 'test';
-});
+app.get('/user', _ => 'baskom');
+app.post('/user', (req) => ({ body: req.body }));
 
-app.get('/send', (req, res) => {
-    res.send('test');
-});
+// or
 
-app.get('/json', (req, res) => {
-    res.json({ name: 'herudi' });
+app.get('/user2', (req, res) => {
+    res.send('baskom');
+});
+app.post('/user2', (req, res) => {
+    res.send({ body: req.body });
+    // or
+    // res.json({ body: req.body });
 });
 
 app.listen(3000, () => {
@@ -50,7 +51,7 @@ app.listen(3000, () => {
 });
     
 ```
-Method available => GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS, CONNECT, TRACE, ALL.
+METHODS => GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS, CONNECT, TRACE, ALL.
 ```js
 app[METHODS](path, ...handlers);
 ```
@@ -115,21 +116,21 @@ const app = baskom();
 
 app.use(mid1);
 
-app.get('/simple', mid2, (req, res) => {
-    return 'test';
+app.get('/foobar', mid2, (req, res) => {
+    return `${req.foo} ${req.bar}`;
 });
 
 app.listen(3000, () => {
     console.log('> Running on ' + 3000);
 });
 ```
-Middleware support : 
+Middleware role : 
 ```js
 ...
 app.use(mid1, mid2);
 app.use([mid1, mid2]);
-app.[METHODS](path, mid1, mid2, handler);
-app.[METHODS](path, [mid1, mid2], handler);
+app[METHODS](path, mid1, mid2, handler);
+app[METHODS](path, [mid1, mid2], handler);
 ...
 ```
 
@@ -148,69 +149,9 @@ const app = baskom({
     useParseUrl: parseurl,          /* default simple parseurl */
     useDebugError: true,            /* default false */
     useBodyLimit: '1mb',            /* default '1mb' */
-    useDefaultBody: true            /* default true */
+    useDefaultBody: true            /* default true (if using express body-parser please set to false) */
 });
 ...
-
-```
-
-## Body Parser
-### baskom, has a built-in body parser by default.
-
-```js
-
-const baskom = require('baskom');
-
-const app = baskom();
-// or
-// const app = baskom({
-//     useBodyLimit: '100kb'
-// });
-
-app.post('/user', async (req, res) => {
-    await saveUser(req.body);
-    res.code(201);
-    return 'User Created';
-})
-
-app.listen(3000, () => {
-    console.log('Running ' + 3000);
-});
-
-```
-
-### Using library body parser
-Need to install 
-```bash
-npm i body-parser
-// or
-yarn add body-parser
-```
-```js
-
-const baskom = require('baskom');
-const bodyParser = require('body-parser');
-
-const app = baskom({
-    // must set to false
-    useDefaultBody: false
-});
-
-// parse application/x-www-form-urlencoded
-app.use(bodyParser.urlencoded({ extended: false }))
- 
-// parse application/json
-app.use(bodyParser.json())
-
-app.post('/user', async (req, res) => {
-    await saveUser(req.body);
-    res.code(201);
-    return 'User Created';
-})
-
-app.listen(3000, () => {
-    console.log('Running ' + 3000);
-});
 
 ```
 
@@ -223,21 +164,11 @@ const baskom = require('baskom');
 const app = baskom();
 const router = baskom.router();
 
-router.get('/test', _ => {
-    return { name: 'no name' }
-});
-
-router.get('/test/:name', (req, res) => {
-    return { name: req.params.name }
+router.get('/user/:name', (req, res) => {
+    return { name: req.params.name };
 });
 
 app.use('/api/v1', router);
-// or
-// app.use('/api/v1', middleware, router);
-// or
-// app.use('/api/v1', middleware, [router, router2]);
-// or
-// app.use(router);
 
 app.listen(3000, () => {
     console.log('Running ' + 3000);
@@ -251,22 +182,38 @@ Example Router Inherit
 const { Router } = require('baskom');
 class UserRoute extends Router {
     constructor(){
-        this.get('/user', (req, res) => {
-            return { name: 'user' };
+        this.get('/user/:name', (req, res) => {
+            return { name: req.params.name };
         })
     }
 }
 
 module.exports = new UserRoute();
 
+...
+
 // index.js
 app.use('/api/v1', UserRoute);
-// or
-// app.use('/api/v1', middleware, UserRoute);
-// or
-// app.use('/api/v1', middleware, [UserRoute, UserRoute2]);
-// or
-// app.use(UserRoute);
+
+```
+Router role :
+```js
+// single router
+app.use(router);
+// multi router
+app.use([router, router2]);
+// single router + middleware
+app.use(mid1, mid2, router);
+// multi router + middleware
+app.use(mid1, mid2, [router, router2]);
+// single router with prefix path
+app.use(path, router);
+// multi router with prefix path
+app.use(path, [router, router2]);
+// single router with prefix path + middleware
+app.use(path, mid1, mid2, router);
+// multi router with prefix path + middleware
+app.use(path, mid1, mid2, [router, router2]);
 
 ```
 
@@ -412,31 +359,26 @@ app.withCluster(() => {
 ```
 
 ## Static Serve Assets
-Must install serve-static
+Must install serve-static or sirv (example using sirv)
 ```bash
-npm install serve-static --save
+npm i sirv
 // or
-yarn add serve-static
+yarn add sirv
 ```
 ```js
 const baskom = require('baskom');
-const serveStatic = require('serve-static');
+const sirv = require('sirv');
 
 baskom()
     // in folder public or whatever
-    // static assets available => http://localhost:3000/assets/yourfile.css
-    .use('/assets', serveStatic('public'))
-    .get('/hello', async (req, res) => {
-        return { name: 'hello' };
-    })
+    .use('/assets', sirv('public'))
+    // static assets available => http://localhost:3000/assets/yourfile.ext
     .listen(3000, () => {
         console.log('Running ' + 3000);
     });
 ```
 
 ## What Next ?
-[See full documentation](https://github.com/herudi/baskom/wiki/baskom-doc)
-<br>
 [See example](https://github.com/herudi/baskom/tree/master/example)
 
 ## License

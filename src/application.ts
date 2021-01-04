@@ -90,11 +90,10 @@ export default class Application extends Router {
                 basedir: _basedir,
                 render: _render
             };
-        } else if (typeof arg === 'function' && (getParamNames(arg)[0] === 'err' || getParamNames(arg)[0] === 'error' || getParamNames(arg).length === 4)) {
-            this.error = wrapError(larg);
-        } else if (arg === '*') {
-            this.notFound = wrap(larg);
-        } else if (typeof larg === 'object' && larg.routes) {
+        } 
+        else if (typeof arg === 'function' && (getParamNames(arg)[0] === 'err' || getParamNames(arg)[0] === 'error' || getParamNames(arg).length === 4)) this.error = wrapError(larg);
+        else if (arg === '*') this.notFound = wrap(larg); 
+        else if (typeof larg === 'object' && larg.routes) {
             let prefix_obj = '';
             if (typeof arg === 'string' && arg.length > 1 && arg.charAt(0) === '/') prefix_obj = arg;
             let fns = findArgs(args, true);
@@ -114,9 +113,7 @@ export default class Application extends Router {
             }
         } else if (Array.isArray(larg)) {
             let fns = findArgs(args, true), prefix_obj = '';
-            if (typeof arg === 'string' && arg.length > 1 && arg.charAt(0) === '/') {
-                prefix_obj = arg;
-            }
+            if (typeof arg === 'string' && arg.length > 1 && arg.charAt(0) === '/') prefix_obj = arg;
             let pushFromArray = (_args: string | any[], _prefix_obj: string) => {
                 for (let i = 0; i < _args.length; i++) {
                     let el = _args[i];
@@ -130,21 +127,16 @@ export default class Application extends Router {
                             }
                             this.routes = this.routes.concat(routes);
                         }
-                    } else if (typeof el === 'function') {
-                        this.midds.push(wrap(el));
-                    }
+                    } else if (typeof el === 'function') this.midds.push(wrap(el));
                 }
             }
             for (let i = 0; i < args.length; i++) {
                 let el = args[i];
-                if (Array.isArray(el)) {
-                    pushFromArray(el, prefix_obj);
-                }
+                if (Array.isArray(el)) pushFromArray(el, prefix_obj);
             }
         } else {
-            if (typeof arg === 'function') {
-                this.midds = this.midds.concat(findArgs(args));
-            } else if (arg === '/' || arg === '') {
+            if (typeof arg === 'function') this.midds = this.midds.concat(findArgs(args)); 
+            else if (arg === '/' || arg === '') {
                 args.shift();
                 this.midds = this.midds.concat(findArgs(args));
             } else {
@@ -169,11 +161,14 @@ export default class Application extends Router {
     }
 
     private requestListener(req: Request, res: Response) {
-        let url = this.parseurl(req);
         cleanup(this.mroute);
-        let key = req.method + url.pathname,
+        let url = this.parseurl(req),
+            key = req.method + url.pathname,
             obj = this.mroute[key],
-            prefix = findBase(req.path = url.pathname);
+            prefix = findBase(req.path = url.pathname), i = 0,
+            cb: () => void = () => {
+                if (i < obj.len) obj.handlers[i++](req, res, (err?: any) => err ? this.error(err, req, res, (_err?: any) => res.code(_err.code || 500).send(_err.stack || 'Something went wrong')) : cb());
+            };
         if (obj === void 0) {
             obj = this.getRoute(req.method, url.pathname, this.notFound);
             lock(req.method, this.mroute, key, obj);
@@ -190,8 +185,6 @@ export default class Application extends Router {
             obj.len = obj.handlers.length;
             lock(req.method, this.mroute, key, obj);
         };
-        let mlen = obj.len, i = 0;
-        let cb: Function = () => (i < mlen) && obj.handlers[i++](req, res, (err?: any) => err ? this.error(err, req, res, (_err?: any) => res.code(_err.code || 500).send(_err.stack || 'Something went wrong')) : cb());
         finalHandler(req, res, this.bodyLimit, this.parsequery, this.debugError, this.defaultBody, req.method, cb);
     }
 

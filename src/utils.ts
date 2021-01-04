@@ -197,7 +197,8 @@ export function wrapError(handler: any) {
     };
 };
 
-export function finalHandler(req: Request, res: Response, limit: number | string, qs_parse: any, useDebugError: boolean, defaultBody: boolean, method: any, cb: Function) {
+export function finalHandler(req: Request, res: Response, limit: number | string, qs_parse: any, useDebugError: boolean, defaultBody: boolean, method: any, cb: () => void) {
+    let i = 0;
     if (method === 'GET') cb();
     else if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
         if (!defaultBody) {
