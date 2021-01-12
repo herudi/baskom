@@ -8,7 +8,6 @@ function midd(req, res, next){
 polka()
     .use(midd)
     .get('/hello/:name', (req, res) => {
-        let random = Math.random().toString(36).substring(7);
-        res.end(`Hello ${req.params.name} - ${random} - ${req.foo}`);
+        res.end(`Hello ${req.params.name} - ${req.foo}`);
     })
     .listen(3000);

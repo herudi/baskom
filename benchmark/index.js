@@ -1,6 +1,3 @@
-#!/usr/bin/env node
-/* eslint no-console: 0 */
-
 const autocannon = require('autocannon');
 const minimist = require('minimist');
 const ora = require('ora');
@@ -50,8 +47,6 @@ const benchmark = async (results = []) => {
       if (argv.o && argv.o !== file) {
         return yes();
       }
-
-      process.env.STORM_LOG_LEVEL = 'silent';
       const forked = fork(`${__dirname}/frameworks/${file}`);
       await nap(0.25);
 

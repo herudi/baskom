@@ -35,7 +35,7 @@ app.use('*', (req, res) => {
     let obj = {
         statusCode: 404,
         name: 'NotFoundError',
-        message: err.message
+        message: 'Not Found'
     };
     res.code = 404;
     return obj;

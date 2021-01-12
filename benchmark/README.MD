@@ -5,19 +5,9 @@ Server => Nodejs v12.16.3, Ubuntu 16.04.6 LTS, Memory 16GB, Processor Intel(R) X
 Usage => yarn bench
 |Frameworks |Version |Requests/sec |Latency |Throughput/Mb |
 |--- |--- |--- |--- |--- |
-|Baskom|0.0.10|61609.6|1.51|6.46|
-|Fastify|3.8.0|53987.2|1.75|7.77|
-|Polka|0.5.2|52323.2|1.8|5.49|
-|Rayo|1.3.6|43312|2.19|4.54|
-|RayoStrom|-|39561.6|2.45|4.15|
-|Express|4.17.1|20792|4.7|4.24|
+|Baskom|0.1.9|61609.6|1.51|6.46|
+|Fastify|3.8.0|60515.2|1.55|9.06|
+|Polka|0.5.2|56073.6|1.68|6.20|
+|Rayo|1.3.6|53353.6|1.77|5.90|
+|Express|4.17.1|28635.2|3.4|4.26|
 
-## Proof Screenshot
-<img src="https://raw.githubusercontent.com/herudi/baskom/main/benchmark/screenshot-1.png" alt="imagestea" />
-
-> Note => Choosing a framework, is not just speed but convenience when writing and lots of suitable libraries.
-
-## License
-Big Thanks for original code benchmarking : [https://github.com/GetRayo/rayo.js/tree/master/packages/benchmarks](https://github.com/GetRayo/rayo.js/tree/master/packages/benchmarks)
-
-[MIT](https://github.com/GetRayo/rayo.js/blob/master/LICENSE)

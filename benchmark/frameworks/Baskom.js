@@ -1,4 +1,4 @@
-const baskom = require('baskom');
+const baskom = require('./../../lib');
 
 function midd(req, res, next){
     req.foo = 'foo';
@@ -8,7 +8,6 @@ function midd(req, res, next){
 baskom()
     .use(midd)
     .get('/hello/:name', (req, res) => {
-        let random = Math.random().toString(36).substring(7);
-        res.send(`Hello ${req.params.name} - ${random} - ${req.foo}`);
+        res.send(`Hello ${req.params.name} - ${req.foo}`);
     })
     .listen(3000);

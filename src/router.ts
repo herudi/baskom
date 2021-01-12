@@ -1,73 +1,73 @@
-import { Handler, TRoutes } from "./types";
-import { toPathx, wrap } from "./utils";
+import { NextFunction, Request, Response, THandler, TRoutes } from "./types";
 
-let _push = Array.prototype.push;
+const _PUSH = Array.prototype.push;
 
 export default class Router {
-    routes: any[];
+    routes: any;
+    c_routes: any[];
     constructor() {
-        this.routes = [];
+        this.routes = {};
+        this.c_routes = [];
     }
 
-    call(method: string, path: string, ...handlers: Array<Handler | Handler[]>) {
-        let fns: Array<Handler | Handler[]> = [], j = 0, i = 0;
-        for (; i < handlers.length; i++) {
-            let arg = handlers[i];
-            if (Array.isArray(arg)) {
-                for (; j < arg.length; j++) fns.push(wrap(arg[j]));
-            } else fns.push(wrap(arg));
-        }
-        let el = toPathx(path);
-        this.routes.push({ params: el.params, pathx: el.pathx, method, path, handlers: fns });
+    call(method: string, path: string, ...handlers: Array<THandler | THandler[]>) {
+        this.c_routes.push({ method, path, handlers });
         return this;
     }
     getRoute(method: string, path: string, notFound: any) {
-        let i = 0, j = 0, el: TRoutes, routes = this.routes,
-            matches = [], params = {}, handlers = [], len = routes.length, nf: any;
+        if (this.routes['ALL'] !== void 0) {
+            if (this.routes[method] === void 0) this.routes[method] = [];
+            this.routes[method] = this.routes[method].concat(this.routes['ALL']);
+        }
+        let i = 0, j = 0, el: TRoutes, routes = this.routes[method] || [], matches = [], params = {}, handlers = [], len = routes.length, nf: any;
         while (i < len) {
             el = routes[i];
-            if ((el.method === method || el.method === 'ALL') && el.pathx.test(path)) {
+            if (el.pathx.test(path)) {
                 nf = false;
-                if (el.params.length > 0) {
+                if (el.params) {
                     matches = el.pathx.exec(path);
                     while (j < el.params.length) params[el.params[j]] = matches[++j] || null;
+                    if (params['wild']) params['wild'] = params['wild'].split('/');
                 }
-                _push.apply(handlers, el.handlers);
+                _PUSH.apply(handlers, el.handlers);
                 break;
             }
             i++;
         }
-        handlers.push(notFound);
+        if (notFound) handlers.push(notFound);
+        else {
+            handlers.push((req: Request, res: Response, next: NextFunction) => {
+                return res.code(404).json({
+                    statusCode: 404,
+                    name: 'NotFoundError',
+                    message: `Route ${method}${path} not found`
+                })
+            });
+        }
         return { params, handlers, nf };
     }
-    connect(path: string, ...args: Array<Handler | Handler[]>) {
-        return this.call('CONNECT', path, ...args);
+    all(path: string, ...handlers: Array<THandler | THandler[]>) {
+        return this.call('ALL', path, ...handlers);
     }
-    all(path: string, ...args: Array<Handler | Handler[]>) {
-        return this.call('ALL', path, ...args);
+    get(path: string, ...handlers: Array<THandler | THandler[]>) {
+        return this.call('GET', path, ...handlers);
     }
-    trace(path: string, ...args: Array<Handler | Handler[]>) {
-        return this.call('TRACE', path, ...args);
+    post(path: string, ...handlers: Array<THandler | THandler[]>) {
+        return this.call('POST', path, ...handlers);
     }
-    get(path: string, ...args: Array<Handler | Handler[]>) {
-        return this.call('GET', path, ...args);
+    put(path: string, ...handlers: Array<THandler | THandler[]>) {
+        return this.call('PUT', path, ...handlers);
     }
-    post(path: string, ...args: Array<Handler | Handler[]>) {
-        return this.call('POST', path, ...args);
+    delete(path: string, ...handlers: Array<THandler | THandler[]>) {
+        return this.call('DELETE', path, ...handlers);
     }
-    put(path: string, ...args: Array<Handler | Handler[]>) {
-        return this.call('PUT', path, ...args);
+    patch(path: string, ...handlers: Array<THandler | THandler[]>) {
+        return this.call('PATCH', path, ...handlers);
     }
-    delete(path: string, ...args: Array<Handler | Handler[]>) {
-        return this.call('DELETE', path, ...args);
+    head(path: string, ...handlers: Array<THandler | THandler[]>) {
+        return this.call('HEAD', path, ...handlers);
     }
-    patch(path: string, ...args: Array<Handler | Handler[]>) {
-        return this.call('PATCH', path, ...args);
-    }
-    head(path: string, ...args: Array<Handler | Handler[]>) {
-        return this.call('HEAD', path, ...args);
-    }
-    options(path: string, ...args: Array<Handler | Handler[]>) {
-        return this.call('OPTIONS', path, ...args);
+    options(path: string, ...handlers: Array<THandler | THandler[]>) {
+        return this.call('OPTIONS', path, ...handlers);
     }
 }

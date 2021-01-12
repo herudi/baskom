@@ -4,25 +4,77 @@ import * as cluster from 'cluster';
 import * as os from 'os';
 import Router from './router';
 import { parse as parsequery } from 'querystring';
-import { generalError, toPathx, findBase, getParamNames, wrap, parseurl, finalHandler, getError, wrapError, defaultRenderEngine, findArgs } from './utils';
+import { generalError, getParamNames, wrap, parseurl, finalHandler, getError, wrapError, defaultRenderEngine, findArgs, toPathx, findBase } from './utils';
 import response from './response';
-import { IApp, Request, Response, Runner } from './types';
+import request from './request';
+import { THandler, IApp, Request, Response, NextFunction, TEHandler } from './types';
+import { METHODS } from './constant';
 
-let preMethod = 'GET,POST';
-function cleanup(mroute: any) {
-    let cnt = 0; for (let k in mroute) cnt++;
-    if (cnt > 64) mroute = {};
+const PRE_METHOD = 'GET,POST';
+
+interface Application extends Router {
+    use(prefix: string, routers: Router[]): this;
+    use(prefix: string, router: Router): this;
+    use(router: Router): this;
+    use(router: Router[]): this;
+    use(middleware: THandler, routers: Router[]): this;
+    use(middleware: THandler, router: Router): this;
+    use(middleware: THandler | TEHandler): this;
+    use(...middlewares: Array<THandler | THandler[]> | Array<TEHandler | TEHandler[]>): this;
+    use(prefix: string, middleware: THandler, routers: Router[]): this;
+    use(prefix: string, middleware: THandler, router: Router): this;
+    use(prefix: string, middleware: THandler): this;
+    use(prefix: string, ...middlewares: Array<THandler | THandler[]>): this;
+    use(...args: any): this;
+    listen(port: number, hostname?: string, callback?: (req: Request, res: Response) => void): void;
+    listen(port: number, callback: (req: Request, res: Response) => void): void;
+    listen(port: number, ...args: any): void;
+    handler(req: Request, res: Response): void;
+    handler(req: any, res: any): void;
+    withCluster(config: { numCPUs: number }, callback: () => void): void;
+    withCluster(callback: () => void): void;
+    withCluster(...args: any): void;
 }
 
-function lock(method: string, mroute: any, key: string, data: any) {
-    if (preMethod.indexOf(method) !== -1 && data.nf !== void 0) mroute[key] = data;
+function wrapHandlers(handlers: Array<THandler | THandler[]>) {
+    let ret: Array<THandler | THandler[]> = [], j = 0, i = 0;
+    for (; i < handlers.length; i++) {
+        let arg = handlers[i];
+        if (Array.isArray(arg)) {
+            for (; j < arg.length; j++) ret.push(wrap(arg[j]));
+        } else ret.push(wrap(arg));
+    }
+    return ret;
 }
 
-export default class Application extends Router {
-    private error: (err: any, req: Request, res: Response, run: Runner) => any;
+function patchRoutes(arg: string, args: any[], routes: any[]) {
+    let prefix = '', handlers = findArgs(args, true), i = 0, len = routes.length, ret = {};
+    if (typeof arg === 'string' && arg.length > 1 && arg.charAt(0) === '/') prefix = arg;
+    for (; i < len; i++) {
+        let el = routes[i];
+        let { params, pathx } = toPathx(prefix + el.path);
+        el.handlers = wrapHandlers(el.handlers);
+        el.handlers = handlers.concat(el.handlers);
+        if (ret[el.method] === void 0) ret[el.method] = [];
+        ret[el.method].push({ params, pathx, handlers: el.handlers });
+    }
+    return ret;
+}
+
+function bindRoutes(routes: any, c_routes: any) {
+    METHODS.forEach(el => {
+        if (c_routes[el] !== void 0) {
+            if (routes[el] === void 0) routes[el] = [];
+            routes[el] = routes[el].concat(c_routes[el]);
+        };
+    });
+    return routes;
+}
+
+class Application extends Router {
+    private error: (err: any, req: Request, res: Response, next: NextFunction) => any;
     private notFound: any;
     private parsequery: any;
-    private parseurl: any;
     private debugError: any;
     private bodyLimit: any;
     private midds: any;
@@ -32,21 +84,28 @@ export default class Application extends Router {
     private defaultBody: any;
     private mroute: any;
     private server: any;
-    constructor({ useServer, useParseQueryString, useParseUrl, useDebugError, useBodyLimit, useDefaultBody }: IApp = {}) {
+    constructor({ useServer, useParseQueryString, useDebugError, useBodyLimit, useDefaultBody }: IApp = {}) {
         super();
         this.debugError = useDebugError || false;
         this.bodyLimit = useBodyLimit || '1mb';
         this.defaultBody = useDefaultBody || true;
-        this.parseurl = useParseUrl || parseurl;
         this.parsequery = useParseQueryString || parsequery;
         this.error = generalError(useDebugError);
-        this.notFound = this.error.bind(null, { code: 404, name: 'NotFoundError', message: 'Not Found Error' });
+        this.notFound = undefined;
         this.midds = [];
         this.pmidds = {};
         this.engine = {};
         this.mroute = {};
         this.workers = [];
-        this.server = useServer || http.createServer();
+        this.server = useServer;
+    }
+
+    call(method: string, path: string, ...handlers: Array<THandler | THandler[]>) {
+        let fns = wrapHandlers(handlers);
+        let { params, pathx } = toPathx(path);
+        if (this.routes[method] === void 0) this.routes[method] = [];
+        this.routes[method].push({ params, pathx, handlers: fns });
+        return this;
     }
 
     wrapFn(fn: Function) {
@@ -90,52 +149,19 @@ export default class Application extends Router {
                 basedir: _basedir,
                 render: _render
             };
-        } 
+        }
         else if (typeof arg === 'function' && (getParamNames(arg)[0] === 'err' || getParamNames(arg)[0] === 'error' || getParamNames(arg).length === 4)) this.error = wrapError(larg);
-        else if (arg === '*') this.notFound = wrap(larg); 
-        else if (typeof larg === 'object' && larg.routes) {
-            let prefix_obj = '';
-            if (typeof arg === 'string' && arg.length > 1 && arg.charAt(0) === '/') prefix_obj = arg;
-            let fns = findArgs(args, true);
-            for (let i = 0; i < args.length; i++) {
-                let el = args[i];
-                if (typeof el === 'object') {
-                    if (el.routes) {
-                        let routes = el.routes;
-                        for (let j = 0; j < routes.length; j++) {
-                            routes[j].path = prefix_obj + routes[j].path;
-                            routes[j].pathx = toPathx(routes[j].path).pathx;
-                            routes[j].handlers = fns.concat(routes[j].handlers);
-                        }
-                        this.routes = this.routes.concat(routes);
-                    }
-                }
-            }
-        } else if (Array.isArray(larg)) {
-            let fns = findArgs(args, true), prefix_obj = '';
-            if (typeof arg === 'string' && arg.length > 1 && arg.charAt(0) === '/') prefix_obj = arg;
-            let pushFromArray = (_args: string | any[], _prefix_obj: string) => {
-                for (let i = 0; i < _args.length; i++) {
-                    let el = _args[i];
-                    if (typeof el === 'object') {
-                        if (el.routes) {
-                            let routes = el.routes;
-                            for (let j = 0; j < routes.length; j++) {
-                                routes[j].path = _prefix_obj + routes[j].path;
-                                routes[j].pathx = toPathx(routes[j].path).pathx;
-                                routes[j].handlers = fns.concat(routes[j].handlers);
-                            }
-                            this.routes = this.routes.concat(routes);
-                        }
-                    } else if (typeof el === 'function') this.midds.push(wrap(el));
-                }
-            }
-            for (let i = 0; i < args.length; i++) {
-                let el = args[i];
-                if (Array.isArray(el)) pushFromArray(el, prefix_obj);
-            }
+        else if (arg === '*') this.notFound = wrap(larg);
+        else if (typeof larg === 'object' && larg.c_routes) bindRoutes(this.routes, patchRoutes(arg, args, larg.c_routes));
+        else if (Array.isArray(larg)) {
+            let el: any, i = 0, len = larg.length;
+            for (; i < len; i++) {
+                el = larg[i];
+                if (typeof el === 'object' && el.c_routes) bindRoutes(this.routes, patchRoutes(arg, args, el.c_routes));
+                else if (typeof el === 'function') this.midds.push(wrap(el));
+            };
         } else {
-            if (typeof arg === 'function') this.midds = this.midds.concat(findArgs(args)); 
+            if (typeof arg === 'function') this.midds = this.midds.concat(findArgs(args));
             else if (arg === '/' || arg === '') {
                 args.shift();
                 this.midds = this.midds.concat(findArgs(args));
@@ -147,10 +173,10 @@ export default class Application extends Router {
                 for (let i = 0; i < args.length; i++) {
                     let el = args[i], fixs = this.pmidds[prefix] || [];
                     if (prefix) {
-                        fixs.push((req: Request, res: Response, run: Runner) => {
+                        fixs.push((req: Request, res: Response, next: NextFunction) => {
                             req.url = req.url.substring(prefix.length) || '/';
                             req.path = req.path ? req.path.substring(prefix.length) || '/' : '/';
-                            run();
+                            next();
                         });
                         this.pmidds[prefix] = fixs.concat(el);
                     }
@@ -160,36 +186,30 @@ export default class Application extends Router {
         return this;
     }
 
-    private requestListener(req: Request, res: Response) {
-        cleanup(this.mroute);
-        let url = this.parseurl(req),
+    handler(req: Request, res: Response) {
+        let cnt = 0; for (let k in this.mroute) cnt++;
+        if (cnt > 32) this.mroute = {};
+        let url = parseurl(req),
             key = req.method + url.pathname,
-            obj = this.mroute[key],
-            prefix = findBase(req.path = url.pathname), i = 0,
-            cb: () => void = () => {
-                if (i < obj.len) obj.handlers[i++](req, res, (err?: any) => err ? this.error(err, req, res, (_err?: any) => res.code(_err.code || 500).send(_err.stack || 'Something went wrong')) : cb());
+            obj = this.mroute[key], idx = 0,
+            next: (err?: any) => void = (err?: any) => {
+                if (err) return this.error(err, req, res, next);
+                obj.handlers[idx++](req, res, next);
             };
         if (obj === void 0) {
             obj = this.getRoute(req.method, url.pathname, this.notFound);
-            lock(req.method, this.mroute, key, obj);
+            if (PRE_METHOD.indexOf(req.method) !== -1 && obj.nf !== void 0) this.mroute[key] = obj;
         }
         response(res, this.engine);
-        req.originalUrl = req.originalUrl || req.url;
-        req.params = obj.params;
-        req.query = this.parsequery(url.query);
-        req.search = url.search;
+        request(req, url, obj.params, this.parsequery);
         if (obj.m === void 0) {
+            let prefix = findBase(url.pathname), midds = this.midds;
             if (this.pmidds[prefix] !== void 0) obj.handlers = this.pmidds[prefix].concat(obj.handlers);
-            obj.handlers = this.midds.concat(obj.handlers);
+            obj.handlers = midds.concat(obj.handlers);
             obj.m = true;
-            obj.len = obj.handlers.length;
-            lock(req.method, this.mroute, key, obj);
+            if (PRE_METHOD.indexOf(req.method) !== -1 && obj.nf !== void 0) this.mroute[key] = obj;
         };
-        finalHandler(req, res, this.bodyLimit, this.parsequery, this.debugError, this.defaultBody, req.method, cb);
-    }
-
-    handler() {
-        return (req: any, res: any) => this.requestListener(req, res);
+        finalHandler(req, res, this.bodyLimit, this.parsequery, this.debugError, this.defaultBody, req.method, next);
     }
 
     withCluster(...args: any) {
@@ -208,10 +228,12 @@ export default class Application extends Router {
     }
 
     listen(port: number = 3000, ...args: any) {
-        const server = this.server;
+        const server = this.server || http.createServer();
         server.on('request', (req: Request, res: Response) => {
-            this.requestListener(req, res);
+            this.handler(req, res);
         });
         server.listen(port, ...args);
     }
 }
+
+export default Application;

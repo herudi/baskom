@@ -12,7 +12,7 @@ app.get('/hello', _ => {
     return { name: 'hello' };
 });
 
-const server = https.createServer(credentials, app.handler());
+const server = https.createServer(credentials, app.handler);
 
 server.listen(3000, () => {
     console.log('Running ' + 3000)

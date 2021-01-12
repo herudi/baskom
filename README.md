@@ -1,14 +1,14 @@
 # Baskom js
 
-[![npm version](https://img.shields.io/badge/npm-0.1.8-blue.svg)](https://npmjs.org/package/baskom) 
+[![npm version](https://img.shields.io/badge/npm-0.1.9-blue.svg)](https://npmjs.org/package/baskom) 
 [![License](https://img.shields.io/:license-mit-blue.svg)](http://badges.mit-license.org)
 [![download-url](https://img.shields.io/npm/dm/baskom.svg)](https://npmjs.org/package/baskom)
 
-Fast and lightweight nodejs framework with easy to use.
+Fast and fun nodejs framework with easy to use.
 
 ## Features
 
-- Fast and small (just ~40kb installed) 🚀.
+- Small (just ~40kb installed).
 - Robust router.
 - Support middleware like express (you can use express middleware like multer, body-parser,  express-validator, serve-static and many more).
 - Support popular template engine (ejs, handlebars, pug, jsx and more).
@@ -51,7 +51,7 @@ app.listen(3000, () => {
 });
     
 ```
-METHODS => GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS, CONNECT, TRACE, ALL.
+METHODS => GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS, ALL.
 ```js
 app[METHODS](path, ...handlers);
 ```
@@ -102,14 +102,14 @@ For typescript see [example using ts](https://github.com/herudi/baskom/tree/mast
 
 const baskom = require('baskom');
 
-function mid1(req, res, run){
+function mid1(req, res, next){
     req.foo = 'foo';
-    run();
+    next();
 }
 
-function mid2(req, res, run){
+function mid2(req, res, next){
     req.bar = 'bar';
-    run();
+    next();
 }
 
 const app = baskom();
@@ -141,12 +141,10 @@ app[METHODS](path, [mid1, mid2], handler);
 const baskom = require('baskom');
 const low = require('low-http-server');
 const qs = require('qs');
-const parseurl = require('parseurl');
 
 const app = baskom({
     useServer: low({}),             /* default native http server node */
     useParseQueryString: qs.parse,  /* default native parse querystring node */
-    useParseUrl: parseurl,          /* default simple parseurl */
     useDebugError: true,            /* default false */
     useBodyLimit: '1mb',            /* default '1mb' */
     useDefaultBody: true            /* default true (if using express body-parser please set to false) */
@@ -256,7 +254,7 @@ app.use((err, req, res) => {
 })
 
 // Not Found Route Error Handling
-app.use('*', (req, res, run) => {
+app.use('*', (req, res, next) => {
     res.code(404);
     return 'Url Not found';
 })
@@ -290,7 +288,7 @@ if (!payment) {
 ```
 
 ## Template Engine
-Note : If multiple engine please give extension on res.render.
+> Note : If multiple engine please give extension on res.render.
 
 [See example template engine](https://github.com/herudi/baskom/tree/master/example/using-template-engine)
 
@@ -358,20 +356,20 @@ app.withCluster(() => {
 
 ```
 
-## Static Serve Assets
-Must install serve-static or sirv (example using sirv)
+## Serve Static Assets
+Must install serve-static or sirv (example using serve-static)
 ```bash
-npm i sirv
+npm i serve-static
 // or
-yarn add sirv
+yarn add serve-static
 ```
 ```js
 const baskom = require('baskom');
-const sirv = require('sirv');
+const serveStatic = require('serve-static');
 
 baskom()
     // in folder public or whatever
-    .use('/assets', sirv('public'))
+    .use('/assets', serveStatic('public'))
     // static assets available => http://localhost:3000/assets/yourfile.ext
     .listen(3000, () => {
         console.log('Running ' + 3000);

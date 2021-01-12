@@ -12,7 +12,8 @@ const upload = multer({ storage });
 baskom()
     .post('/upload', upload.single('file'), (req, res) => {
         if (!req.file) {
-            throw new Error('Upload Failed');
+            res.code(400);
+            return 'Failed to upload';
         }
         return 'Success Upload';
     })

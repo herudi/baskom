@@ -1,7 +1,6 @@
 import { IncomingMessage, ServerResponse } from "http";
 
 export interface IApp {
-    useParseUrl?: any;
     useDebugError?: boolean;
     useBodyLimit?: number | string;
     useParseQueryString?: any;
@@ -21,33 +20,42 @@ export interface Request extends IncomingMessage {
 }
 
 export interface Response extends ServerResponse {
-    code: (code: number) => Response;
-    status: (code: number) => Response;
-    type: (type: string) => Response;
-    json: (data: any) => any;
-    send: (data: any) => any;
-    render: (pathfile: string, ...args: any) => any;
-    redirect: (path: string) => any;
-    sendFile: (data: any) => any;
-    download: (data: any) => any;
+    code(code: number): this;
+    status(code: number): this;
+    type(type: string): this;
+    json(data: any): void;
+    send(data: any): void;
+    render(pathfile: string, param: any, option: any): void;
+    render(pathfile: string, param: any): void;
+    render(pathfile: string, ...args: any): void;
+    redirect(path: string): void;
+    sendFile(data: any): void;
+    download(data: any): void;
+    set(name: string, value: string): this;
+    get(name: string): void;
     locals: any;
     [key: string]: any;
 }
 
-export type Runner = (err?: any) => any;
+export type NextFunction = (err?: any) => any;
 
 export type TRoutes = {
     params: any[];
     pathx: RegExp;
-    method: string;
-    path: string;
     handlers: any[];
 };
 
-export type Handler = (
+export type THandler = (
     req: Request,
     res: Response,
-    run: Runner
+    next: NextFunction
+) => any;
+
+export type TEHandler = (
+    error: Error,
+    req: Request,
+    res: Response,
+    next: NextFunction
 ) => any;
 
 

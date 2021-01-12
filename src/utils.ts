@@ -1,11 +1,11 @@
 import { MIME_TYPES, OCTET_TYPE, TYPE, JSON_TYPE, TEXT_PLAIN_TYPE, FORM_URLENCODED_TYPE } from './constant';
 import { parse as parsequery } from 'querystring';
-import { Request, Response, Runner } from './types';
+import { Request, Response, NextFunction } from './types';
 import * as path from 'path';
 import * as fs from 'fs';
 
-function isTypeBodyPassed(header: any, _type) {
-    return header[TYPE] && header[TYPE].indexOf(_type) !== -1;
+function isTypeBodyPassed(header: any, _type: string) {
+    return header[TYPE.toLowerCase()] && header[TYPE.toLowerCase()].indexOf(_type) !== -1;
 }
 
 export function getParamNames(func: Function) {
@@ -53,7 +53,7 @@ export function getError(err: any, useDebugError: boolean = false, req?: Request
 }
 
 export function generalError(useDebugError = false) {
-    return (err: any, req: Request, res: Response, run: Runner) => onError(err, res, useDebugError);
+    return (err: any, req: Request, res: Response, next: NextFunction) => onError(err, res, useDebugError);
 }
 
 export function findBase(pathname: string) {
@@ -62,9 +62,9 @@ export function findBase(pathname: string) {
     return pathname;
 }
 
-export function findArgs(arr: any, ifFn?: boolean) {
-    let _arr = [];
-    for (let i = 0; i < arr.length; i++) {
+export function findArgs(arr: any[], ifFn?: boolean) {
+    let _arr = [], i = 0, len = arr.length;
+    for (; i < len; i++) {
         if (ifFn) {
             if (typeof arr[i] === 'function') _arr.push(wrap(arr[i]));
         } else _arr.push(wrap(arr[i]));
@@ -72,46 +72,32 @@ export function findArgs(arr: any, ifFn?: boolean) {
     return _arr;
 }
 
-export function toPathx(str: string) {
-    let buildopts = (p: string) => `(?:${p})?`,
-        def_rgx = `/([^/]+?)`,
-        params = [],
-        arr = str.split(`/`);
-    arr[0] || arr.shift();
-    let patterns = [],
-        len = arr.length,
-        i = 0,
-        el: string | string[],
-        fchar: string,
-        lchar: string,
-        in_opt: boolean,
-        in_arr: string | string[];
-    while (i < len) {
-        el = arr[i];
-        fchar = el[0];
-        lchar = el[el.length - 1];
-        if (fchar === `*`) {
-            params.push(`wild`);
-            patterns.push(`/(.*)`);
-        } else if (fchar === `:`) {
-            in_opt = lchar === `?`;
-            in_arr = el.substring(1, in_opt ? el.length - 1 : el.length)
-            if (in_arr[in_arr.length - 1] === `)`) {
-                let match = in_arr.match(/^([^(]+)(\(.+\))$/);
-                if (match) {
-                    params.push(match[1]);
-                    let in_pattern = `/` + match[2];
-                    patterns.push(in_opt ? buildopts(in_pattern) : in_pattern);
-                }
-            }
-            params.push(in_arr);
-            patterns.push(in_opt ? buildopts(def_rgx) : def_rgx);
-        } else {
-            patterns.push(`/` + el);
-        }
-        i++;
+export function toPathx(path: string | RegExp) {
+    if (path instanceof RegExp) return { params: null, pathx: path };
+    let params = [], pattern = '', strReg = '/([^/]+?)', strRegQ = '(?:/([^/]+?))?';
+    if (path.match(/\?|\*|\./gi)) {
+        let arr = path.split('/'), obj: string | any[], el: string, i = 0; arr.shift();
+        for (; i < arr.length; i++) {
+            obj = arr[i]; 
+            el = obj[0];
+            if (el === '*') {
+                params.push('wild');
+                pattern += '/(.*)';
+            } else if (el === ':') {
+                let isQuest = obj.indexOf('?') !== -1, isExt = obj.indexOf('.') !== -1;
+                if (isQuest && !isExt) pattern += strRegQ;
+                else pattern += strReg;
+                if (isExt) pattern += (isQuest ? '?' : '') + '\\' + obj.substring(obj.indexOf('.'));
+            } else pattern += '/' + obj;
+        };
+    } else pattern = path.replace(/\/:[a-z]+/gi, strReg);
+    let pathx = new RegExp(`^${pattern}/?$`, 'i'), matches = path.match(/\:([a-z]+)/gi);
+    if (!params.length) params = matches && matches.map((e: string) => e.substring(1));
+    else {
+        let newArr = matches ? matches.map((e: string) => e.substring(1)) : [];
+        params = newArr.concat(params);
     }
-    return { params, pathx: new RegExp(`^` + patterns.join('') + `/?$`, `i`) };
+    return { params, pathx };
 }
 
 export function parseurl(req: Request) {
@@ -135,74 +121,74 @@ export function parseurl(req: Request) {
     return (req._parsedUrl = url);
 }
 
-async function withPromise(handler: any, res: Response, run: Runner) {
+async function withPromise(handler: any, res: Response, next: NextFunction, isWrapError: boolean = false) {
     try {
         let fn = await handler;
         if (typeof fn === 'string') res.end(fn);
         else res.json(fn);
     } catch (err) {
-        run(err);
+        if (isWrapError) onError(err, res, true);
+        else next(err);
     }
 }
 
 export function wrap(handler: any) {
     const isAsync = handler.constructor.name === "AsyncFunction";
-    return isAsync ? async function (req: Request, res: Response, run: Runner) {
+    return isAsync ? async function (req: Request, res: Response, next: NextFunction) {
         try {
-            let fn = await handler(req, res, run);
+            let fn = await handler(req, res, next);
             if (fn) {
                 if (typeof fn === 'string') res.end(fn);
                 else res.json(fn);
             };
         } catch (err) {
-            run(err);
+            next(err);
         }
-    } : function (req: Request, res: Response, run: Runner) {
+    } : function (req: Request, res: Response, next: NextFunction) {
         try {
-            let fn = handler(req, res, run);
+            let fn = handler(req, res, next);
             if (fn) {
                 if (typeof fn === 'string') res.end(fn);
-                else if (typeof fn.then === 'function') return withPromise(fn, res, run);
+                else if (typeof fn.then === 'function') return withPromise(fn, res, next);
                 else res.json(fn);
             };
         } catch (err) {
-            run(err);
+            next(err);
         }
     };
 };
 
 export function wrapError(handler: any) {
     const isAsync = handler.constructor.name === "AsyncFunction";
-    return isAsync ? async function (err: any, req: Request, res: Response, run: Runner) {
+    return isAsync ? async function (err: any, req: Request, res: Response, next: NextFunction) {
         try {
-            let fn = await handler(err, req, res, run);
+            let fn = await handler(err, req, res, next);
             if (fn) {
                 if (typeof fn === 'string') res.end(fn);
                 else res.json(fn);
             };
         } catch (err) {
-            run(err);
+            onError(err, res, true);
         }
-    } : function (err: any, req: Request, res: Response, run: Runner) {
+    } : function (err: any, req: Request, res: Response, next: NextFunction) {
         try {
-            let fn = handler(err, req, res, run);
+            let fn = handler(err, req, res, next);
             if (fn) {
                 if (typeof fn === 'string') res.end(fn);
-                else if (typeof fn.then === 'function') return withPromise(fn, res, run);
+                else if (typeof fn.then === 'function') return withPromise(fn, res, next, true);
                 else res.json(fn);
             };
         } catch (err) {
-            run(err);
+            onError(err, res, true);
         }
     };
 };
 
-export function finalHandler(req: Request, res: Response, limit: number | string, qs_parse: any, useDebugError: boolean, defaultBody: boolean, method: any, cb: () => void) {
-    let i = 0;
-    if (method === 'GET') cb();
+export function finalHandler(req: Request, res: Response, limit: number | string, qs_parse: any, useDebugError: boolean, defaultBody: boolean, method: any, next: (err?: any) => void) {
+    if (method === 'GET') next();
     else if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
         if (!defaultBody) {
-            cb();
+            next();
             return;
         };
         let header = req.headers;
@@ -210,25 +196,26 @@ export function finalHandler(req: Request, res: Response, limit: number | string
             isTypeBodyPassed(header, TEXT_PLAIN_TYPE) ||
             isTypeBodyPassed(header, FORM_URLENCODED_TYPE)
         ) {
-            let data = [];
-            let error = null;
-            let lmt = parsebytes(limit);
-            let urlencode_parse = qs_parse || parsequery;
-            req.on('data', (chunk: Buffer) => {
-                let len = req.headers['content-length'] || Buffer.byteLength(chunk);
+            let chunks = [], error = null;
+            req.on('data', (buf: Buffer) => {
+                let lmt = parsebytes(limit), len = req.headers['content-length'] || Buffer.byteLength(buf);
                 try {
                     if (len > lmt) {
                         throw new Error('Body is too large');
                     } else {
-                        data.push(chunk);
+                        chunks.push(buf);
                     }
                 } catch (err) {
                     error = err;
                 }
             }).on('end', () => {
+                if (!chunks.length) {
+                    req._body = false;
+                    req.body = {};
+                    return next();
+                }
                 if (error) return onError(error, res, useDebugError);
-                let str = Buffer.concat(data).toString();
-                let body = null;
+                let urlencode_parse = qs_parse || parsequery, str = Buffer.concat(chunks).toString(), body = null;
                 if (isTypeBodyPassed(header, JSON_TYPE)) {
                     try {
                         body = JSON.parse(str);
@@ -245,11 +232,11 @@ export function finalHandler(req: Request, res: Response, limit: number | string
                     }
                 }
                 req._body = true;
-                req.body = body;
-                cb();
+                req.body = body || {};
+                next();
             });
-        } else cb();
-    } else cb();
+        } else next();
+    } else next();
 }
 
 function parsebytes(arg: string | number) {
@@ -310,7 +297,7 @@ export function defaultRenderEngine(obj: {
                         filename: source
                     });
                     result = compile(...args);
-                } 
+                }
                 else if (type === 'render') result = engine.render(file.toString(), ...args);
                 else if (type === 'renderSource') result = engine.render(source, ...args);
             }

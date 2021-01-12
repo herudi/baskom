@@ -8,7 +8,6 @@ function midd(req, res, next){
 rayo({ port: 3000 })
     .through(midd)
     .get('/hello/:name', (req, res) => {
-        let random = Math.random().toString(36).substring(7);
-        res.end(`Hello ${req.params.name} - ${random} - ${req.foo}`);
+        res.end(`Hello ${req.params.name} - ${req.foo}`);
     })
     .start();
