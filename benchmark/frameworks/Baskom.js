@@ -1,4 +1,4 @@
-const baskom = require('./../../lib');
+const baskom = require('baskom');
 
 function midd(req, res, next){
     req.foo = 'foo';
