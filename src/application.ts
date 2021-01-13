@@ -1,10 +1,9 @@
 import * as http from 'http';
-import * as pathnode from 'path';
 import * as cluster from 'cluster';
 import * as os from 'os';
 import Router from './router';
 import { parse as parsequery } from 'querystring';
-import { generalError, getParamNames, wrap, parseurl, finalHandler, getError, wrapError, defaultRenderEngine, findArgs, toPathx, findBase } from './utils';
+import { generalError, getParamNames, wrap, parseurl, finalHandler, getError, wrapError, toPathx, findBase, getEngine } from './utils';
 import response from './response';
 import request from './request';
 import { THandler, IApp, Request, Response, NextFunction, TEHandler } from './types';
@@ -48,13 +47,16 @@ function wrapHandlers(handlers: Array<THandler | THandler[]>) {
 }
 
 function patchRoutes(arg: string, args: any[], routes: any[]) {
-    let prefix = '', handlers = findArgs(args, true), i = 0, len = routes.length, ret = {};
+    let prefix = '', midds = [], i = 0, j = 0, alen = args.length, len = routes.length, ret = {};
+    for (; j < alen; j++) {
+        if (typeof args[j] === 'function') midds.push(wrap(args[j]));
+    }
     if (typeof arg === 'string' && arg.length > 1 && arg.charAt(0) === '/') prefix = arg;
     for (; i < len; i++) {
         let el = routes[i];
         let { params, pathx } = toPathx(prefix + el.path);
         el.handlers = wrapHandlers(el.handlers);
-        el.handlers = handlers.concat(el.handlers);
+        el.handlers = midds.concat(el.handlers);
         if (ret[el.method] === void 0) ret[el.method] = [];
         ret[el.method].push({ params, pathx, handlers: el.handlers });
     }
@@ -108,10 +110,6 @@ class Application extends Router {
         return this;
     }
 
-    wrapFn(fn: Function) {
-        return wrap(fn);
-    }
-
     getError(err: any, req: Request, res: Response) {
         let data = getError(err, this.debugError, req);
         res.code(data.statusCode);
@@ -119,40 +117,33 @@ class Application extends Router {
     }
 
     use(...args: any) {
-        let arg = args[0], larg = args[args.length - 1], prefix = null;
-        if (typeof arg === 'object' && arg.engine) {
-            let defaultDir = pathnode.join(pathnode.dirname(require.main.filename || process.mainModule.filename), 'views'),
-                _ext = arg.ext,
-                _basedir = pathnode.resolve(arg.basedir || defaultDir),
-                _render = arg.render;
-            if (_render === void 0) {
-                let _engine = (typeof arg.engine === 'string' ? require(arg.engine) : arg.engine);
-                if (typeof _engine === 'object' && _engine.renderFile !== void 0) _engine = _engine.renderFile;
-                let _name = arg.name || (typeof arg.engine === 'string' ? arg.engine : 'html');
-                _ext = _ext || ('.' + _name);
-                if (_name === 'nunjucks') _engine.configure(_basedir, { autoescape: arg.autoescape || true });
-                _render = defaultRenderEngine({
-                    engine: _engine,
-                    name: _name,
-                    options: arg.options,
-                    header: arg.header || {
-                        'Content-Type': 'text/html; charset=utf-8'
-                    },
-                    settings: {
-                        views: _basedir,
-                        ...(arg.set ? arg.set : {})
-                    }
-                })
-            }
-            this.engine[_ext] = {
-                ext: _ext,
-                basedir: _basedir,
-                render: _render
-            };
+        let arg = args[0], larg = args[args.length - 1], len = args.length;
+        if (len === 1 && typeof arg === 'function') {
+            let params = getParamNames(arg), fname = params[0];
+            if (fname === 'err' || fname === 'error' || params.length === 4) this.error = wrapError(arg);
+            else this.midds.push(wrap(arg));
         }
-        else if (typeof arg === 'function' && (getParamNames(arg)[0] === 'err' || getParamNames(arg)[0] === 'error' || getParamNames(arg).length === 4)) this.error = wrapError(larg);
-        else if (arg === '*') this.notFound = wrap(larg);
+        else if (typeof arg === 'string' && typeof larg === 'function') {
+            if (arg === '*') this.notFound = wrap(larg);
+            else {
+                let prefix = arg === '/' ? '' : arg, fns = [];
+                fns.push((req: Request, res: Response, next: NextFunction) => {
+                    req.url = req.url.substring(prefix.length) || '/';
+                    req.path = req.path ? req.path.substring(prefix.length) || '/' : '/';
+                    next();
+                });
+                for (let i = 0; i < args.length; i++) {
+                    let el = args[i];
+                    if (typeof el === 'function') fns.push(wrap(el));
+                }
+                this.pmidds[prefix] = fns;
+            }
+        }
         else if (typeof larg === 'object' && larg.c_routes) bindRoutes(this.routes, patchRoutes(arg, args, larg.c_routes));
+        else if (typeof larg === 'object' && larg.engine) {
+            let obj = getEngine(arg);
+            this.engine[obj.ext] = obj;
+        }
         else if (Array.isArray(larg)) {
             let el: any, i = 0, len = larg.length;
             for (; i < len; i++) {
@@ -160,27 +151,10 @@ class Application extends Router {
                 if (typeof el === 'object' && el.c_routes) bindRoutes(this.routes, patchRoutes(arg, args, el.c_routes));
                 else if (typeof el === 'function') this.midds.push(wrap(el));
             };
-        } else {
-            if (typeof arg === 'function') this.midds = this.midds.concat(findArgs(args));
-            else if (arg === '/' || arg === '') {
-                args.shift();
-                this.midds = this.midds.concat(findArgs(args));
-            } else {
-                if (typeof arg === 'string' && arg.charAt(0) === '/') {
-                    prefix = arg === '/' ? '' : arg;
-                    args.shift();
-                }
-                for (let i = 0; i < args.length; i++) {
-                    let el = args[i], fixs = this.pmidds[prefix] || [];
-                    if (prefix) {
-                        fixs.push((req: Request, res: Response, next: NextFunction) => {
-                            req.url = req.url.substring(prefix.length) || '/';
-                            req.path = req.path ? req.path.substring(prefix.length) || '/' : '/';
-                            next();
-                        });
-                        this.pmidds[prefix] = fixs.concat(el);
-                    }
-                }
+        }
+        else {
+            for (let i = 0; i < args.length; i++) {
+                if (typeof args[i] === 'function') this.midds.push(wrap(args[i]));
             }
         }
         return this;

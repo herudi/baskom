@@ -1,7 +1,7 @@
 import { MIME_TYPES, OCTET_TYPE, TYPE, JSON_TYPE, TEXT_PLAIN_TYPE, FORM_URLENCODED_TYPE } from './constant';
 import { parse as parsequery } from 'querystring';
 import { Request, Response, NextFunction } from './types';
-import * as path from 'path';
+import * as pathnode from 'path';
 import * as fs from 'fs';
 
 function isTypeBodyPassed(header: any, _type: string) {
@@ -62,14 +62,35 @@ export function findBase(pathname: string) {
     return pathname;
 }
 
-export function findArgs(arr: any[], ifFn?: boolean) {
-    let _arr = [], i = 0, len = arr.length;
-    for (; i < len; i++) {
-        if (ifFn) {
-            if (typeof arr[i] === 'function') _arr.push(wrap(arr[i]));
-        } else _arr.push(wrap(arr[i]));
+export function getEngine(arg: any) {
+    let defaultDir = pathnode.join(pathnode.dirname(require.main.filename || process.mainModule.filename), 'views'),
+        _ext = arg.ext,
+        _basedir = pathnode.resolve(arg.basedir || defaultDir),
+        _render = arg.render;
+    if (_render === void 0) {
+        let _engine = (typeof arg.engine === 'string' ? require(arg.engine) : arg.engine);
+        if (typeof _engine === 'object' && _engine.renderFile !== void 0) _engine = _engine.renderFile;
+        let _name = arg.name || (typeof arg.engine === 'string' ? arg.engine : 'html');
+        _ext = _ext || ('.' + _name);
+        if (_name === 'nunjucks') _engine.configure(_basedir, { autoescape: arg.autoescape || true });
+        _render = defaultRenderEngine({
+            engine: _engine,
+            name: _name,
+            options: arg.options,
+            header: arg.header || {
+                'Content-Type': 'text/html; charset=utf-8'
+            },
+            settings: {
+                views: _basedir,
+                ...(arg.set ? arg.set : {})
+            }
+        })
     }
-    return _arr;
+    return {
+        ext: _ext,
+        basedir: _basedir,
+        render: _render
+    };
 }
 
 export function toPathx(path: string | RegExp) {
@@ -78,7 +99,7 @@ export function toPathx(path: string | RegExp) {
     if (path.match(/\?|\*|\./gi)) {
         let arr = path.split('/'), obj: string | any[], el: string, i = 0; arr.shift();
         for (; i < arr.length; i++) {
-            obj = arr[i]; 
+            obj = arr[i];
             el = obj[0];
             if (el === '*') {
                 params.push('wild');
@@ -255,7 +276,7 @@ function parsebytes(arg: string | number) {
 
 export function getMimeType(str: string) {
     let types = MIME_TYPES;
-    str = path.extname(str).substring(1);
+    str = pathnode.extname(str).substring(1);
     str = str ? str.toLowerCase() : '3rt';
     return types[str] || OCTET_TYPE;
 };

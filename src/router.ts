@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response, THandler, TRoutes } from "./types";
 
-const _PUSH = Array.prototype.push;
+const PUSH = Array.prototype.push;
 
 export default class Router {
     routes: any;
@@ -29,7 +29,7 @@ export default class Router {
                     while (j < el.params.length) params[el.params[j]] = matches[++j] || null;
                     if (params['wild']) params['wild'] = params['wild'].split('/');
                 }
-                _PUSH.apply(handlers, el.handlers);
+                PUSH.apply(handlers, el.handlers);
                 break;
             }
             i++;
