@@ -1,1 +1,1 @@
-require('./../../lib')().all('/', _ => 'Hello Wolrd').listen(3000);
+require('./../../lib')().all('/*', _ => 'Hello Wolrd').listen(3000);

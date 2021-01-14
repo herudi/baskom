@@ -1,4 +1,4 @@
-import { NextFunction, Request, Response, THandler, TRoutes } from "./types";
+import { THandler, TRoutes } from "./types";
 
 const PUSH = Array.prototype.push;
 
@@ -34,16 +34,7 @@ export default class Router {
             }
             i++;
         }
-        if (notFound) handlers.push(notFound);
-        else {
-            handlers.push((req: Request, res: Response, next: NextFunction) => {
-                return res.code(404).json({
-                    statusCode: 404,
-                    name: 'NotFoundError',
-                    message: `Route ${method}${path} not found`
-                })
-            });
-        }
+        handlers.push(notFound);
         return { params, handlers, nf };
     }
     all(path: string, ...handlers: Array<THandler | THandler[]>) {

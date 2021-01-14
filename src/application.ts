@@ -3,7 +3,7 @@ import * as cluster from 'cluster';
 import * as os from 'os';
 import Router from './router';
 import { parse as parsequery } from 'querystring';
-import { generalError, getParamNames, wrap, parseurl, finalHandler, getError, wrapError, toPathx, findBase, getEngine } from './utils';
+import { generalError, getParamNames, parseurl, withPromise, finalHandler, getError, wrapError, toPathx, findBase, getEngine } from './utils';
 import response from './response';
 import request from './request';
 import { THandler, IApp, Request, Response, NextFunction, TEHandler } from './types';
@@ -28,29 +28,23 @@ interface Application extends Router {
     listen(port: number, hostname?: string, callback?: (req: Request, res: Response) => void): void;
     listen(port: number, callback: (req: Request, res: Response) => void): void;
     listen(port: number, ...args: any): void;
-    handler(req: Request, res: Response): void;
-    handler(req: any, res: any): void;
+    lookup(req: Request, res: Response): void;
+    lookup(req: any, res: any): void;
     withCluster(config: { numCPUs: number }, callback: () => void): void;
     withCluster(callback: () => void): void;
     withCluster(...args: any): void;
 }
-
-function wrapHandlers(handlers: Array<THandler | THandler[]>) {
-    let ret: Array<THandler | THandler[]> = [], j = 0, i = 0;
-    for (; i < handlers.length; i++) {
-        let arg = handlers[i];
-        if (Array.isArray(arg)) {
-            for (; j < arg.length; j++) ret.push(wrap(arg[j]));
-        } else ret.push(wrap(arg));
+function wrapHandlers(fns: Array<THandler | THandler[]>) {
+    let ret: Array<THandler | THandler[]> = [], len = fns.length, i = 0, fn: string | any[] | THandler;
+    for (; i < len; i++) {
+        fn = fns[i];
+        if (Array.isArray(fn)) ret.push(...fn);
+        else ret.push(fn);
     }
     return ret;
 }
-
 function patchRoutes(arg: string, args: any[], routes: any[]) {
-    let prefix = '', midds = [], i = 0, j = 0, alen = args.length, len = routes.length, ret = {};
-    for (; j < alen; j++) {
-        if (typeof args[j] === 'function') midds.push(wrap(args[j]));
-    }
+    let prefix = '', midds = findFns(args), i = 0, j = 0, alen = args.length, len = routes.length, ret = {};
     if (typeof arg === 'string' && arg.length > 1 && arg.charAt(0) === '/') prefix = arg;
     for (; i < len; i++) {
         let el = routes[i];
@@ -62,7 +56,6 @@ function patchRoutes(arg: string, args: any[], routes: any[]) {
     }
     return ret;
 }
-
 function bindRoutes(routes: any, c_routes: any) {
     METHODS.forEach(el => {
         if (c_routes[el] !== void 0) {
@@ -72,7 +65,13 @@ function bindRoutes(routes: any, c_routes: any) {
     });
     return routes;
 }
-
+function findFns(arr: any[]) {
+    let ret = [], i = 0, len = arr.length;
+    for (; i < len; i++) {
+        if (typeof arr[i] === 'function') ret.push(arr[i]);
+    }
+    return ret;
+}
 class Application extends Router {
     private error: (err: any, req: Request, res: Response, next: NextFunction) => any;
     private notFound: any;
@@ -93,7 +92,14 @@ class Application extends Router {
         this.defaultBody = useDefaultBody || true;
         this.parsequery = useParseQueryString || parsequery;
         this.error = generalError(useDebugError);
-        this.notFound = undefined;
+        this.lookup = this.lookup.bind(this);
+        this.notFound = (req: Request, res: Response, next: NextFunction) => {
+            return res.code(404).json({
+                statusCode: 404,
+                name: 'NotFoundError',
+                message: `Route ${req.method}${req.url} not found`
+            })
+        };
         this.midds = [];
         this.pmidds = {};
         this.engine = {};
@@ -121,10 +127,10 @@ class Application extends Router {
         if (len === 1 && typeof arg === 'function') {
             let params = getParamNames(arg), fname = params[0];
             if (fname === 'err' || fname === 'error' || params.length === 4) this.error = wrapError(arg);
-            else this.midds.push(wrap(arg));
+            else this.midds.push(arg);
         }
         else if (typeof arg === 'string' && typeof larg === 'function') {
-            if (arg === '*') this.notFound = wrap(larg);
+            if (arg === '*') this.notFound = larg;
             else {
                 let prefix = arg === '/' ? '' : arg, fns = [];
                 fns.push((req: Request, res: Response, next: NextFunction) => {
@@ -134,7 +140,7 @@ class Application extends Router {
                 });
                 for (let i = 0; i < args.length; i++) {
                     let el = args[i];
-                    if (typeof el === 'function') fns.push(wrap(el));
+                    if (typeof el === 'function') fns.push(el);
                 }
                 this.pmidds[prefix] = fns;
             }
@@ -149,18 +155,14 @@ class Application extends Router {
             for (; i < len; i++) {
                 el = larg[i];
                 if (typeof el === 'object' && el.c_routes) bindRoutes(this.routes, patchRoutes(arg, args, el.c_routes));
-                else if (typeof el === 'function') this.midds.push(wrap(el));
+                else if (typeof el === 'function') this.midds.push(el);
             };
         }
-        else {
-            for (let i = 0; i < args.length; i++) {
-                if (typeof args[i] === 'function') this.midds.push(wrap(args[i]));
-            }
-        }
+        else this.midds = this.midds.concat(findFns(args));
         return this;
     }
 
-    handler(req: Request, res: Response) {
+    requestListener(req: Request, res: Response) {
         let cnt = 0; for (let k in this.mroute) cnt++;
         if (cnt > 32) this.mroute = {};
         let url = parseurl(req),
@@ -168,7 +170,16 @@ class Application extends Router {
             obj = this.mroute[key], idx = 0,
             next: (err?: any) => void = (err?: any) => {
                 if (err) return this.error(err, req, res, next);
-                obj.handlers[idx++](req, res, next);
+                try {
+                    let ret = obj.handlers[idx++](req, res, next);
+                    if (ret) {
+                        if (typeof ret === 'string') res.send(ret);
+                        else if (typeof ret.then === 'function') return withPromise(ret, res, next);
+                        else res.json(ret);
+                    }
+                } catch (error) {
+                    next(error);
+                }
             };
         if (obj === void 0) {
             obj = this.getRoute(req.method, url.pathname, this.notFound);
@@ -201,10 +212,14 @@ class Application extends Router {
         } else cb();
     }
 
+    lookup(req: Request, res: Response) {
+        this.requestListener(req, res);
+    }
+
     listen(port: number = 3000, ...args: any) {
         const server = this.server || http.createServer();
         server.on('request', (req: Request, res: Response) => {
-            this.handler(req, res);
+            this.requestListener(req, res);
         });
         server.listen(port, ...args);
     }

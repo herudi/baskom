@@ -142,7 +142,7 @@ export function parseurl(req: Request) {
     return (req._parsedUrl = url);
 }
 
-async function withPromise(handler: any, res: Response, next: NextFunction, isWrapError: boolean = false) {
+export async function withPromise(handler: any, res: Response, next: NextFunction, isWrapError: boolean = false) {
     try {
         let fn = await handler;
         if (typeof fn === 'string') res.end(fn);
@@ -152,32 +152,6 @@ async function withPromise(handler: any, res: Response, next: NextFunction, isWr
         else next(err);
     }
 }
-
-export function wrap(handler: any) {
-    const isAsync = handler.constructor.name === "AsyncFunction";
-    return isAsync ? async function (req: Request, res: Response, next: NextFunction) {
-        try {
-            let fn = await handler(req, res, next);
-            if (fn) {
-                if (typeof fn === 'string') res.end(fn);
-                else res.json(fn);
-            };
-        } catch (err) {
-            next(err);
-        }
-    } : function (req: Request, res: Response, next: NextFunction) {
-        try {
-            let fn = handler(req, res, next);
-            if (fn) {
-                if (typeof fn === 'string') res.end(fn);
-                else if (typeof fn.then === 'function') return withPromise(fn, res, next);
-                else res.json(fn);
-            };
-        } catch (err) {
-            next(err);
-        }
-    };
-};
 
 export function wrapError(handler: any) {
     const isAsync = handler.constructor.name === "AsyncFunction";
