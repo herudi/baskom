@@ -7,7 +7,6 @@ import { generalError, getParamNames, parseurl, withPromise, finalHandler, getEr
 import response from './response';
 import request from './request';
 import { THandler, IApp, Request, Response, NextFunction, TEHandler } from './types';
-import { METHODS } from './constant';
 
 const PRE_METHOD = 'GET,POST';
 
@@ -19,7 +18,7 @@ interface Application extends Router {
     use(middleware: THandler, routers: Router[]): this;
     use(middleware: THandler, router: Router): this;
     use(middleware: THandler | TEHandler): this;
-    use(...middlewares: Array<THandler | THandler[]> | Array<TEHandler | TEHandler[]>): this;
+    use(...middlewares: Array<THandler | THandler[]>): this;
     use(prefix: string, middleware: THandler, routers: Router[]): this;
     use(prefix: string, middleware: THandler, router: Router): this;
     use(prefix: string, middleware: THandler): this;
@@ -43,34 +42,21 @@ function wrapHandlers(fns: Array<THandler | THandler[]>) {
     }
     return ret;
 }
-function patchRoutes(arg: string, args: any[], routes: any[]) {
-    let prefix = '', midds = findFns(args), i = 0, j = 0, alen = args.length, len = routes.length, ret = {};
-    if (typeof arg === 'string' && arg.length > 1 && arg.charAt(0) === '/') prefix = arg;
-    for (; i < len; i++) {
-        let el = routes[i];
-        let { params, pathx } = toPathx(prefix + el.path);
-        el.handlers = wrapHandlers(el.handlers);
-        el.handlers = midds.concat(el.handlers);
-        if (ret[el.method] === void 0) ret[el.method] = [];
-        ret[el.method].push({ params, pathx, handlers: el.handlers });
-    }
-    return ret;
-}
-function bindRoutes(routes: any, c_routes: any) {
-    METHODS.forEach(el => {
-        if (c_routes[el] !== void 0) {
-            if (routes[el] === void 0) routes[el] = [];
-            routes[el] = routes[el].concat(c_routes[el]);
-        };
-    });
-    return routes;
-}
 function findFns(arr: any[]) {
     let ret = [], i = 0, len = arr.length;
     for (; i < len; i++) {
         if (typeof arr[i] === 'function') ret.push(arr[i]);
     }
     return ret;
+}
+function addRoutes(arg: string, args: any[], routes: any[]) {
+    let prefix = '', midds = findFns(args), i = 0, len = routes.length;
+    if (typeof arg === 'string' && arg.length > 1 && arg.charAt(0) === '/') prefix = arg;
+    for (; i < len; i++) {
+        let el = routes[i];
+        el.handlers = midds.concat(el.handlers);
+        this.call(el.method, prefix + el.path, ...el.handlers);
+    }
 }
 class Application extends Router {
     private error: (err: any, req: Request, res: Response, next: NextFunction) => any;
@@ -145,7 +131,7 @@ class Application extends Router {
                 this.pmidds[prefix] = fns;
             }
         }
-        else if (typeof larg === 'object' && larg.c_routes) bindRoutes(this.routes, patchRoutes(arg, args, larg.c_routes));
+        else if (typeof larg === 'object' && larg.c_routes) addRoutes.call(this, arg, args, larg.c_routes);
         else if (typeof larg === 'object' && larg.engine) {
             let obj = getEngine(arg);
             this.engine[obj.ext] = obj;
@@ -154,7 +140,7 @@ class Application extends Router {
             let el: any, i = 0, len = larg.length;
             for (; i < len; i++) {
                 el = larg[i];
-                if (typeof el === 'object' && el.c_routes) bindRoutes(this.routes, patchRoutes(arg, args, el.c_routes));
+                if (typeof el === 'object' && el.c_routes) addRoutes.call(this, arg, args, el.c_routes);
                 else if (typeof el === 'function') this.midds.push(el);
             };
         }
