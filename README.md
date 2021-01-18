@@ -1,6 +1,6 @@
 # Baskom js
 
-[![npm version](https://img.shields.io/badge/npm-0.1.13-blue.svg)](https://npmjs.org/package/baskom) 
+[![npm version](https://img.shields.io/badge/npm-0.1.14-blue.svg)](https://npmjs.org/package/baskom) 
 [![License](https://img.shields.io/:license-mit-blue.svg)](http://badges.mit-license.org)
 [![download-url](https://img.shields.io/npm/dm/baskom.svg)](https://npmjs.org/package/baskom)
 
@@ -9,7 +9,7 @@ Fast and fun nodejs framework with easy to use.
 ## Features
 
 - Small (just ~40kb installed).
-- Robust router.
+- Robust routing.
 - Support middleware like express (you can use express middleware like multer, body-parser,  express-validator, serve-static and many more).
 - Support popular template engine (ejs, handlebars, pug, jsx and more).
 - Support custom server for (ssr framework) [Nextjs](https://nextjs.org/), [Nuxtjs](https://nuxtjs.org/), [Sapper](https://sapper.svelte.dev/) and more. [See Example](https://github.com/herudi/baskom/tree/master/example)
@@ -63,6 +63,8 @@ res.send('test');
 res.send({ name: 'test' });
 // send with status code
 res.code(201).send('Created');
+// same send status code
+res.status(201).send('Created');
 // send html
 res.type('text/html').send('<h1>Home</h1>');
 // send file stream

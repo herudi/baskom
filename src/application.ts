@@ -148,7 +148,7 @@ class Application extends Router {
         return this;
     }
 
-    requestListener(req: Request, res: Response) {
+    private requestListener(req: Request, res: Response) {
         let cnt = 0; for (let k in this.mroute) cnt++;
         if (cnt > 32) this.mroute = {};
         let url = parseurl(req),
@@ -185,7 +185,7 @@ class Application extends Router {
 
     withCluster(...args: any) {
         let opts: any = { numCPUs: os.cpus().length }, cb = args[0];
-        if (args[0] === 'object') {
+        if (typeof args[0] === 'object') {
             opts = args[0];
             cb = args[1];
         }
