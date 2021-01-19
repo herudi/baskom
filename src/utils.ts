@@ -146,7 +146,8 @@ export async function withPromise(handler: any, res: Response, next: NextFunctio
     try {
         let fn = await handler;
         if (typeof fn === 'string') res.end(fn);
-        else res.json(fn);
+        else if (typeof fn === 'object') res.json(fn);
+        else return fn;
     } catch (err) {
         if (isWrapError) onError(err, res, true);
         else next(err);

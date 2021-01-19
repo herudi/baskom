@@ -126,7 +126,12 @@ class Application extends Router {
                 });
                 for (let i = 0; i < args.length; i++) {
                     let el = args[i];
-                    if (typeof el === 'function') fns.push(el);
+                    if (Array.isArray(el)) {
+                        for (let j = 0; j < el.length; j++) {
+                            if (typeof el[j] === 'function') fns.push(el[j]);
+                        }
+                    }
+                    else if (typeof el === 'function') fns.push(el);
                 }
                 this.pmidds[prefix] = fns;
             }
