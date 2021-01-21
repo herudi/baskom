@@ -111,8 +111,8 @@ export function toPathx(path: string | RegExp) {
                 if (isExt) pattern += (isQuest ? '?' : '') + '\\' + obj.substring(obj.indexOf('.'));
             } else pattern += '/' + obj;
         };
-    } else pattern = path.replace(/\/:[a-z]+/gi, strReg);
-    let pathx = new RegExp(`^${pattern}/?$`, 'i'), matches = path.match(/\:([a-z]+)/gi);
+    } else pattern = path.replace(/\/:[^...]+/gi, strReg);
+    let pathx = new RegExp(`^${pattern}/?$`, 'i'), matches = path.match(/\:([^...]+)/gi);
     if (!params.length) params = matches && matches.map((e: string) => e.substring(1));
     else {
         let newArr = matches ? matches.map((e: string) => e.substring(1)) : [];
