@@ -3,7 +3,7 @@ import * as cluster from 'cluster';
 import * as os from 'os';
 import Router from './router';
 import { parse as parsequery } from 'querystring';
-import { generalError, getParamNames, parseurl, withPromise, finalHandler, getError, wrapError, toPathx, findBase, getEngine } from './utils';
+import { generalError, getParamNames, parseurl, withPromise, finalHandler, getError, wrapError, toPathx, findBase, getEngine, modPath } from './utils';
 import response from './response';
 import request from './request';
 import { THandler, IApp, Request, Response, NextFunction, TEHandler } from './types';
@@ -118,22 +118,20 @@ class Application extends Router {
         else if (typeof arg === 'string' && typeof larg === 'function') {
             if (arg === '*') this.notFound = larg;
             else {
-                let prefix = arg === '/' ? '' : arg, fns = [];
-                fns.push((req: Request, res: Response, next: NextFunction) => {
-                    req.url = req.url.substring(prefix.length) || '/';
-                    req.path = req.path ? req.path.substring(prefix.length) || '/' : '/';
-                    next();
-                });
-                for (let i = 0; i < args.length; i++) {
-                    let el = args[i];
-                    if (Array.isArray(el)) {
-                        for (let j = 0; j < el.length; j++) {
-                            if (typeof el[j] === 'function') fns.push(el[j]);
+                if (arg === '/' || arg === '') this.midds = this.midds.concat(findFns(args));
+                else {
+                    let fns = [modPath(arg)];
+                    for (let i = 0; i < args.length; i++) {
+                        let el = args[i];
+                        if (Array.isArray(el)) {
+                            for (let j = 0; j < el.length; j++) {
+                                if (typeof el[j] === 'function') fns.push(el[j]);
+                            }
                         }
+                        else if (typeof el === 'function') fns.push(el);
                     }
-                    else if (typeof el === 'function') fns.push(el);
+                    this.pmidds[arg] = fns;
                 }
-                this.pmidds[prefix] = fns;
             }
         }
         else if (typeof larg === 'object' && larg.c_routes) addRoutes.call(this, arg, args, larg.c_routes);

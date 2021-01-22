@@ -93,6 +93,14 @@ export function getEngine(arg: any) {
     };
 }
 
+export function modPath(prefix: string) {
+    return function (req: Request, res: Response, next: NextFunction) {
+        req.url = req.url.substring(prefix.length) || '/';
+        req.path = req.path ? req.path.substring(prefix.length) || '/' : '/';
+        next();
+    }
+}
+
 export function toPathx(path: string | RegExp) {
     if (path instanceof RegExp) return { params: null, pathx: path };
     let params = [], pattern = '', strReg = '/([^/]+?)', strRegQ = '(?:/([^/]+?))?';
