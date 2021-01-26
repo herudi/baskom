@@ -24,8 +24,8 @@ interface Application extends Router {
     use(prefix: string, middleware: THandler): this;
     use(prefix: string, ...middlewares: Array<THandler | THandler[]>): this;
     use(...args: any): this;
-    listen(port: number, hostname?: string, callback?: (req: Request, res: Response) => void): void;
-    listen(port: number, callback: (req: Request, res: Response) => void): void;
+    listen(port: number, hostname?: string, callback?: (err?: Error) => void): void;
+    listen(port: number, callback: (err?: Error) => void): void;
     listen(port: number, ...args: any): void;
     lookup(req: Request, res: Response): void;
     lookup(req: any, res: any): void;
