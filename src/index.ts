@@ -6,6 +6,7 @@ import { BadRequestError, UnprocessableEntityError, BaskomError, ForbiddenError,
 const baskom = ({ useServer, useParseQueryString, useDebugError, useBodyLimit, useDefaultBody }: IApp = {}) => new App({ useServer, useParseQueryString, useDebugError, useBodyLimit, useDefaultBody });
 baskom.router = () => new Router();
 baskom.Router = Router;
+baskom.Application = App;
 baskom.BaskomError = BaskomError;
 baskom.BadRequestError = BadRequestError;
 baskom.UnauthorizedError = UnauthorizedError;

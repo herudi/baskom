@@ -1,23 +1,15 @@
-import baskom from 'baskom';
-import Application from 'baskom/lib/application';
+import { Application } from 'baskom';
 import UserController from './UserController';
 import { Request, Response, NextFunction } from 'baskom/lib/types';
 
-export default class App {
-    private app: Application;
+export default class App extends Application {
     constructor() {
-        this.app = baskom();
-        this.app.use('/api/v1', this.middleware, UserController);
+        super();
+        this.use('/api/v1', this.middleware, UserController);
     }
 
-    middleware(req: Request, res: Response, next: NextFunction){
+    middleware(req: Request, res: Response, next: NextFunction) {
         req.user = 'herudi';
         next();
-    }
-
-    public listen(port: number) {
-        this.app.listen(port, () => {
-            console.log('Running on port ' + port);
-        })
     }
 }

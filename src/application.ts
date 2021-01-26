@@ -33,19 +33,11 @@ interface Application extends Router {
     withCluster(callback: () => void): void;
     withCluster(...args: any): void;
 }
-function wrapHandlers(fns: Array<THandler | THandler[]>) {
-    let ret: Array<THandler | THandler[]> = [], len = fns.length, i = 0, fn: string | any[] | THandler;
-    for (; i < len; i++) {
-        fn = fns[i];
-        if (Array.isArray(fn)) ret.push(...fn);
-        else ret.push(fn);
-    }
-    return ret;
-}
 function findFns(arr: any[]) {
     let ret = [], i = 0, len = arr.length;
     for (; i < len; i++) {
-        if (typeof arr[i] === 'function') ret.push(arr[i]);
+        if (Array.isArray(arr[i])) ret = ret.concat(findFns(arr[i]));
+        else if (typeof arr[i] === 'function') ret.push(arr[i]);
     }
     return ret;
 }
@@ -95,7 +87,7 @@ class Application extends Router {
     }
 
     call(method: string, path: string, ...handlers: Array<THandler | THandler[]>) {
-        let fns = wrapHandlers(handlers);
+        let fns = findFns(handlers);
         let { params, pathx } = toPathx(path);
         if (this.routes[method] === void 0) this.routes[method] = [];
         this.routes[method].push({ params, pathx, handlers: fns });
@@ -119,19 +111,7 @@ class Application extends Router {
             if (arg === '*') this.notFound = larg;
             else {
                 if (arg === '/' || arg === '') this.midds = this.midds.concat(findFns(args));
-                else {
-                    let fns = [modPath(arg)];
-                    for (let i = 0; i < args.length; i++) {
-                        let el = args[i];
-                        if (Array.isArray(el)) {
-                            for (let j = 0; j < el.length; j++) {
-                                if (typeof el[j] === 'function') fns.push(el[j]);
-                            }
-                        }
-                        else if (typeof el === 'function') fns.push(el);
-                    }
-                    this.pmidds[arg] = fns;
-                }
+                else this.pmidds[arg] = [modPath(arg)].concat(findFns(args));
             }
         }
         else if (typeof larg === 'object' && larg.c_routes) addRoutes.call(this, arg, args, larg.c_routes);
@@ -162,7 +142,7 @@ class Application extends Router {
                 try {
                     let ret = obj.handlers[idx++](req, res, next);
                     if (ret) {
-                        if (typeof ret === 'string') res.send(ret);
+                        if (typeof ret === 'string') res.end(ret);
                         else if (typeof ret.then === 'function') return withPromise(ret, res, next);
                         else res.json(ret);
                     }
