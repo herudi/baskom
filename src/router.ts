@@ -15,24 +15,45 @@ export default class Router {
         return this;
     }
     getRoute(method: string, path: string, notFound: any) {
-        if (this.routes['ALL'] !== void 0) {
-            if (this.routes[method] === void 0) this.routes[method] = [];
-            this.routes[method] = this.routes[method].concat(this.routes['ALL']);
-        }
-        let i = 0, j = 0, el: TRoutes, routes = this.routes[method] || [], matches = [], params = {}, handlers = [], len = routes.length, nf: any;
-        while (i < len) {
-            el = routes[i];
-            if (el.pathx.test(path)) {
-                nf = false;
-                if (el.params) {
-                    matches = el.pathx.exec(path);
-                    while (j < el.params.length) params[el.params[j]] = matches[++j] || null;
-                    if (params['wild']) params['wild'] = params['wild'].split('/');
-                }
-                PUSH.apply(handlers, el.handlers);
-                break;
+        let params = {}, handlers = [], nf: any;
+        if (this.routes[method + path]) {
+            PUSH.apply(handlers, this.routes[method + path]);
+            nf = false;
+        } else {
+            let key = '';
+            if (path.lastIndexOf('/') === (path.length - 1)) {
+                let _key = path.slice(0, -1);
+                key = _key.substring(0, _key.lastIndexOf('/'));
             }
-            i++;
+            else key = path.substring(0, path.lastIndexOf('/'));
+            if (this.routes[method + key + '/:p']) {
+                let obj = this.routes[method + key + '/:p'];
+                let param = path.substring(path.lastIndexOf('/') + 1);
+                params = { [obj.params]: param };
+                PUSH.apply(handlers, obj.handlers);
+                nf = false;
+            } else {
+                if (this.routes['ALL'] !== void 0) {
+                    if (this.routes[method] === void 0) this.routes[method] = [];
+                    this.routes[method] = this.routes[method].concat(this.routes['ALL']);
+                }
+                let i = 0, j = 0, el: TRoutes, routes = this.routes[method] || [], matches = [], len = routes.length;
+                while (i < len) {
+                    el = routes[i];
+                    if (el.pathx.test(path)) {
+                        nf = false;
+                        if (el.params) {
+                            matches = el.pathx.exec(path);
+                            while (j < el.params.length) params[el.params[j]] = matches[++j] || null;
+                            if (params['wild']) params['wild'] = params['wild'].split('/');
+                        }
+                        PUSH.apply(handlers, el.handlers);
+                        break;
+                    }
+                    i++;
+                }
+            }
+
         }
         handlers.push(notFound);
         return { params, handlers, nf };

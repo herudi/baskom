@@ -1,9 +1,21 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { STATUS_CODES } from "http";
-import { JSON_CHARSET, OCTET_TYPE, TYPE } from "./constant";
+import { OCTET_TYPE, CONTENT_LENGTH, CONTENT_TYPE, JSON_TYPE, CHARSET, HTML_TYPE, MIME_TYPES } from "./constant";
 import { Response } from './types';
 import { getMimeType } from './utils';
+
+function _send(res: Response, data: any, contentType: any) {
+    if (res._header) {
+        res.end(data);
+        return;
+    }
+    let header = {}, code = res.statusCode;
+    header[CONTENT_TYPE] = contentType;
+    header[CONTENT_LENGTH] = '' + Buffer.byteLength(data);
+    res.writeHead(code, header);
+    res.end(data);
+}
 
 function response(res: Response, engine: any) {
     res.set = function (name: string, value: string) {
@@ -22,26 +34,30 @@ function response(res: Response, engine: any) {
         return this;
     };
     res.type = function (type: string) {
-        this.setHeader(TYPE, type);
+        this.setHeader(CONTENT_TYPE, MIME_TYPES[type] || type);
         return this;
     };
     res.json = function (data: any) {
         data = JSON.stringify(data);
-        this.setHeader(TYPE, JSON_CHARSET);
-        this.end(data);
+        _send(this, data, JSON_TYPE + CHARSET);
     };
     res.send = function (data: any) {
         if (typeof data === 'string') this.end(data);
+        else if (typeof data.pipe === 'function') {
+            this.setHeader(CONTENT_TYPE, this.getHeader(CONTENT_TYPE) || OCTET_TYPE);
+            data.pipe(this);
+        }
+        else if (Buffer.isBuffer(data)) this.type(this.getHeader(CONTENT_TYPE) || OCTET_TYPE).end(data);
         else if (typeof data === 'object') this.json(data);
-        else this.end(data || STATUS_CODES[this.statusCode]);
+        else res.end(data || STATUS_CODES[this.statusCode]);
     };
     res.sendFile = function (data: any) {
         if (typeof data === 'string') {
-            this.setHeader(TYPE, this.getHeader(TYPE) || getMimeType(data));
+            this.setHeader(CONTENT_TYPE, this.getHeader(CONTENT_TYPE) || getMimeType(data));
             let fStream = fs.createReadStream(data);
             fStream.pipe(this);
         } else {
-            this.setHeader(TYPE, this.getHeader(TYPE) || OCTET_TYPE);
+            this.setHeader(CONTENT_TYPE, this.getHeader(CONTENT_TYPE) || OCTET_TYPE);
             data.pipe(this);
         }
     };

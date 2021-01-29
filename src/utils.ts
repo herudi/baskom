@@ -1,11 +1,11 @@
-import { MIME_TYPES, OCTET_TYPE, TYPE, JSON_TYPE, TEXT_PLAIN_TYPE, FORM_URLENCODED_TYPE } from './constant';
+import { MIME_TYPES, OCTET_TYPE, JSON_TYPE, TEXT_PLAIN_TYPE, FORM_URLENCODED_TYPE, CONTENT_TYPE } from './constant';
 import { parse as parsequery } from 'querystring';
 import { Request, Response, NextFunction } from './types';
 import * as pathnode from 'path';
 import * as fs from 'fs';
 
 function isTypeBodyPassed(header: any, _type: string) {
-    return header[TYPE.toLowerCase()] && header[TYPE.toLowerCase()].indexOf(_type) !== -1;
+    return header[CONTENT_TYPE.toLowerCase()] && header[CONTENT_TYPE.toLowerCase()].indexOf(_type) !== -1;
 }
 
 export function getParamNames(func: Function) {
@@ -101,8 +101,16 @@ export function modPath(prefix: string) {
     }
 }
 
-export function toPathx(path: string | RegExp) {
+export function toPathx(path: string | RegExp, isAll: boolean) {
     if (path instanceof RegExp) return { params: null, pathx: path };
+    if (path.match(/\?|\*|\./gi) === null && isAll === false) {
+        let len = (path.match(/\/:/gi) || []).length;
+        if (len === 0) return;
+        if (len === 1) {
+            let arr = path.split('/:');
+            if (arr[arr.length - 1].indexOf('/') === -1) return { params: arr[1], key: arr[0] + '/:p', pathx: null };
+        }
+    };
     let params = [], pattern = '', strReg = '/([^/]+?)', strRegQ = '(?:/([^/]+?))?';
     if (path.match(/\?|\*|\./gi)) {
         let arr = path.split('/'), obj: string | any[], el: string, i = 0; arr.shift();
@@ -284,7 +292,7 @@ export function defaultRenderEngine(obj: {
             name = obj.name,
             header = obj.header,
             file = fs.readFileSync(source, 'utf8');
-        header['Content-Type'] = header['Content-Type'] || header[TYPE] || res.getHeader(TYPE) || res.getHeader('Content-Type') || 'text/html; charset=utf-8';
+        header['Content-Type'] = header['Content-Type'] || header[CONTENT_TYPE] || res.getHeader(CONTENT_TYPE) || res.getHeader('Content-Type') || 'text/html; charset=utf-8';
         if (obj.options) args.push(obj.options);
         if (!args.length) args.push({ settings: obj.settings });
         else Object.assign(args[0], { settings: obj.settings });

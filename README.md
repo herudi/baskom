@@ -1,6 +1,6 @@
 # Baskom js
 
-[![npm version](https://img.shields.io/badge/npm-0.1.22-blue.svg)](https://npmjs.org/package/baskom) 
+[![npm version](https://img.shields.io/badge/npm-0.1.23-blue.svg)](https://npmjs.org/package/baskom) 
 [![License](https://img.shields.io/:license-mit-blue.svg)](http://badges.mit-license.org)
 [![download-url](https://img.shields.io/npm/dm/baskom.svg)](https://npmjs.org/package/baskom)
 
@@ -41,9 +41,7 @@ app.get('/user2', (req, res) => {
     res.send('baskom');
 });
 app.post('/user2', (req, res) => {
-    res.send({ body: req.body });
-    // or
-    // res.json({ body: req.body });
+    res.json({ body: req.body });
 });
 
 app.listen(3000, () => {
@@ -61,16 +59,16 @@ Using Response (http.ServerResponse)
 res.send('test');
 // send json
 res.send({ name: 'test' });
+// send json
+res.json({ name: 'test' });
 // send with status code
 res.code(201).send('Created');
 // same send status code
 res.status(201).send('Created');
 // send html
-res.type('text/html').send('<h1>Home</h1>');
-// send file stream
-res.sendFile(__dirname + '/test.html');
-// send json
-res.json({ name: 'test' });
+res.type('html').send('<h1>Home</h1>');
+// send file
+res.sendFile(__dirname + '/test.png');
 // download
 res.download(__dirname + '/test.txt');
 // redirect

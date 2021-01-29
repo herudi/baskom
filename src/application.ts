@@ -88,9 +88,15 @@ class Application extends Router {
 
     call(method: string, path: string, ...handlers: Array<THandler | THandler[]>) {
         let fns = findFns(handlers);
-        let { params, pathx } = toPathx(path);
-        if (this.routes[method] === void 0) this.routes[method] = [];
-        this.routes[method].push({ params, pathx, handlers: fns });
+        let obj = toPathx(path, method === 'ALL');
+        if (obj !== void 0) {
+            if (obj.key) {
+                this.routes[method + obj.key] = { params: obj.params, handlers: fns };
+            } else {
+                if (this.routes[method] === void 0) this.routes[method] = [];
+                this.routes[method].push({ ...obj, handlers: fns });
+            }
+        } else this.routes[method + path] = fns;
         return this;
     }
 
