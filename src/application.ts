@@ -3,12 +3,10 @@ import * as cluster from 'cluster';
 import * as os from 'os';
 import Router from './router';
 import { parse as parsequery } from 'querystring';
-import { generalError, getParamNames, parseurl, withPromise, finalHandler, getError, wrapError, toPathx, findBase, getEngine, modPath } from './utils';
+import { generalError, getParamNames, parseurl, sendPromise, finalHandler, getError, wrapError, toPathx, getEngine, modPath } from './utils';
 import response from './response';
 import request from './request';
 import { THandler, IApp, Request, Response, NextFunction, TEHandler } from './types';
-
-const PRE_METHOD = 'GET,POST';
 
 interface Application extends Router {
     use(prefix: string, routers: Router[]): this;
@@ -50,24 +48,27 @@ function addRoutes(arg: string, args: any[], routes: any[]) {
         this.call(el.method, prefix + el.path, ...el.handlers);
     }
 }
+function preNext(cb: (req: Request, res: Response, next: NextFunction) => void, req: Request, res: Response, next: NextFunction): any {
+    if (res.finished === true || res.writableEnded === true) return;
+    return cb(req, res, next);
+}
 class Application extends Router {
     private error: (err: any, req: Request, res: Response, next: NextFunction) => any;
-    private notFound: any;
+    private notFound: (req: Request, res: Response, next: NextFunction) => void;
     private parsequery: any;
-    private debugError: any;
-    private bodyLimit: any;
-    private midds: any;
-    private pmidds: any;
+    private debugError: boolean;
+    private bodyLimit: string | number;
     private engine: any;
     private workers: any;
-    private defaultBody: any;
-    private mroute: any;
+    private defaultBody: boolean;
     private server: any;
-    constructor({ useServer, useParseQueryString, useDebugError, useBodyLimit, useDefaultBody }: IApp = {}) {
+    private serverTimeout: number;
+    constructor({ useServer, useServerTimeout, useParseQueryString, useDebugError, useBodyLimit, useDefaultBody }: IApp = {}) {
         super();
-        this.debugError = useDebugError || false;
+        this.debugError = useDebugError === undefined ? false : !!useDebugError;
+        this.serverTimeout = useServerTimeout || 0;
         this.bodyLimit = useBodyLimit || '1mb';
-        this.defaultBody = useDefaultBody || true;
+        this.defaultBody = useDefaultBody === undefined ? true : !!useDefaultBody;
         this.parsequery = useParseQueryString || parsequery;
         this.error = generalError(useDebugError);
         this.lookup = this.lookup.bind(this);
@@ -78,16 +79,14 @@ class Application extends Router {
                 message: `Route ${req.method}${req.url} not found`
             })
         };
-        this.midds = [];
-        this.pmidds = {};
+
         this.engine = {};
-        this.mroute = {};
         this.workers = [];
         this.server = useServer;
     }
 
     call(method: string, path: string, ...handlers: Array<THandler | THandler[]>) {
-        let fns = findFns(handlers);
+        let fns = handlers.length === 1 ? handlers : findFns(handlers);
         let obj = toPathx(path, method === 'ALL');
         if (obj !== void 0) {
             if (obj.key) {
@@ -96,7 +95,7 @@ class Application extends Router {
                 if (this.routes[method] === void 0) this.routes[method] = [];
                 this.routes[method].push({ ...obj, handlers: fns });
             }
-        } else this.routes[method + path] = fns;
+        } else this.routes[method + path] = { handlers: fns };;
         return this;
     }
 
@@ -138,38 +137,28 @@ class Application extends Router {
     }
 
     private requestListener(req: Request, res: Response) {
-        let cnt = 0; for (let k in this.mroute) cnt++;
-        if (cnt > 32) this.mroute = {};
         let url = parseurl(req),
-            key = req.method + url.pathname,
-            obj = this.mroute[key], idx = 0,
+            obj = this.getRoute(req.method, url.pathname, this.notFound), i = 0,
             next: (err?: any) => void = (err?: any) => {
-                if (err) return this.error(err, req, res, next);
-                try {
-                    let ret = obj.handlers[idx++](req, res, next);
-                    if (ret) {
-                        if (typeof ret === 'string') res.end(ret);
-                        else if (typeof ret.then === 'function') return withPromise(ret, res, next);
-                        else res.json(ret);
+                if (err === void 0) {
+                    let ret: Promise<any>;
+                    try {
+                        ret = preNext(obj.handlers[i++], req, res, next);
+                    } catch (error) {
+                        next(error);
+                        return;
                     }
-                } catch (error) {
-                    next(error);
-                }
+                    if (ret) {
+                        if (typeof ret.then === 'function') return sendPromise(ret, res, next);
+                        res.send(ret);
+                    }
+                } else this.error(err, req, res, next);
+
             };
-        if (obj === void 0) {
-            obj = this.getRoute(req.method, url.pathname, this.notFound);
-            if (PRE_METHOD.indexOf(req.method) !== -1 && obj.nf !== void 0) this.mroute[key] = obj;
-        }
         response(res, this.engine);
         request(req, url, obj.params, this.parsequery);
-        if (obj.m === void 0) {
-            let prefix = findBase(url.pathname), midds = this.midds;
-            if (this.pmidds[prefix] !== void 0) obj.handlers = this.pmidds[prefix].concat(obj.handlers);
-            obj.handlers = midds.concat(obj.handlers);
-            obj.m = true;
-            if (PRE_METHOD.indexOf(req.method) !== -1 && obj.nf !== void 0) this.mroute[key] = obj;
-        };
-        finalHandler(req, res, this.bodyLimit, this.parsequery, this.debugError, this.defaultBody, req.method, next);
+        if (req.method === 'GET' || req.method === 'HEAD') next();
+        else finalHandler(req, res, this.bodyLimit, this.parsequery, this.debugError, this.defaultBody, next);
     }
 
     withCluster(...args: any) {
@@ -193,6 +182,7 @@ class Application extends Router {
 
     listen(port: number = 3000, ...args: any) {
         const server = this.server || http.createServer();
+        server.setTimeout(this.serverTimeout);
         server.on('request', (req: Request, res: Response) => {
             this.requestListener(req, res);
         });

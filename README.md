@@ -1,6 +1,6 @@
 # Baskom js
 
-[![npm version](https://img.shields.io/badge/npm-0.1.23-blue.svg)](https://npmjs.org/package/baskom) 
+[![npm version](https://img.shields.io/badge/npm-0.1.24-blue.svg)](https://npmjs.org/package/baskom) 
 [![License](https://img.shields.io/:license-mit-blue.svg)](http://badges.mit-license.org)
 [![download-url](https://img.shields.io/npm/dm/baskom.svg)](https://npmjs.org/package/baskom)
 
@@ -148,6 +148,7 @@ const app = baskom({
     useDebugError: true,            /* default false */
     useBodyLimit: '1mb',            /* default '1mb' */
     useDefaultBody: true            /* default true (if using express body-parser please set to false) */
+    useServerTimeout: 3000          /* number value timeout server */
 });
 ...
 

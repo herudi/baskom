@@ -6,6 +6,7 @@ export interface IApp {
     useParseQueryString?: any;
     useDefaultBody?: boolean;
     useServer?: any;
+    useServerTimeout?: number;
 }
 
 export interface Request extends IncomingMessage {
@@ -22,28 +23,23 @@ export interface Request extends IncomingMessage {
 export interface Response extends ServerResponse {
     code(code: number): this;
     status(code: number): this;
-    type(type: string): this;
-    json(data: any): void;
+    type(contentType: string): this;
+    json(data: { [key: string]: any }): void;
     send(data: any): void;
     render(pathfile: string, param: any, option: any): void;
     render(pathfile: string, param: any): void;
     render(pathfile: string, ...args: any): void;
     redirect(path: string): void;
-    sendFile(data: any): void;
-    download(data: any): void;
-    set(name: string, value: string): this;
+    sendFile(filepath: string): void;
+    download(filepath: string): void;
+    set(name: any, value?: string | number | string[] | number[]): this;
+    header(name: any, value?: string | number | string[] | number[]): this;
     get(name: string): void;
     locals: any;
     [key: string]: any;
 }
 
 export type NextFunction = (err?: any) => any;
-
-export type TRoutes = {
-    params: any[];
-    pathx: RegExp;
-    handlers: any[];
-};
 
 export type THandler = (
     req: Request,

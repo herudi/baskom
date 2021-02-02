@@ -3,7 +3,7 @@ import Router from "./router";
 import { IApp } from "./types";
 import { BadRequestError, UnprocessableEntityError, BaskomError, ForbiddenError, UnauthorizedError, NotFoundError, MethodNotAllowedError, InternalServerError } from './error';
 
-const baskom = ({ useServer, useParseQueryString, useDebugError, useBodyLimit, useDefaultBody }: IApp = {}) => new App({ useServer, useParseQueryString, useDebugError, useBodyLimit, useDefaultBody });
+const baskom = ({ useServer, useServerTimeout, useParseQueryString, useDebugError, useBodyLimit, useDefaultBody }: IApp = {}) => new App({ useServer, useParseQueryString, useDebugError, useBodyLimit, useDefaultBody, useServerTimeout });
 baskom.router = () => new Router();
 baskom.Router = Router;
 baskom.Application = App;

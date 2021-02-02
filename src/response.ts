@@ -1,11 +1,11 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { STATUS_CODES } from "http";
-import { OCTET_TYPE, CONTENT_LENGTH, CONTENT_TYPE, JSON_TYPE, CHARSET, HTML_TYPE, MIME_TYPES } from "./constant";
+import { OCTET_TYPE, CONTENT_LENGTH, CONTENT_TYPE, JSON_TYPE, CHARSET, MIME_TYPES } from "./constant";
 import { Response } from './types';
 import { getMimeType } from './utils';
 
-function _send(res: Response, data: any, contentType: any) {
+function _send(res: Response, data: string, contentType: string | number) {
     if (res._header) {
         res.end(data);
         return;
@@ -18,13 +18,6 @@ function _send(res: Response, data: any, contentType: any) {
 }
 
 function response(res: Response, engine: any) {
-    res.set = function (name: string, value: string) {
-        this.setHeader(name, value);
-        return this;
-    };
-    res.get = function (name: string) {
-        return this.getHeader(name);
-    };
     res.code = function (code: number) {
         this.statusCode = code;
         return this;
@@ -37,9 +30,24 @@ function response(res: Response, engine: any) {
         this.setHeader(CONTENT_TYPE, MIME_TYPES[type] || type);
         return this;
     };
-    res.json = function (data: any) {
-        data = JSON.stringify(data);
-        _send(this, data, JSON_TYPE + CHARSET);
+    res.header = function (name: any, value?: string | number | string[] | number[]) {
+        if (typeof name === "object") {
+            for (let key in name) this.header(key, name[key]);
+            return this;
+        };
+        value = Array.isArray(value) ? (value as string[]).map(String) : value;
+        this.setHeader(name, value as string | string[]);
+        return this;
+    }
+    res.set = function (name: any, value?: string | number | string[] | number[]) {
+        this.header(name, value);
+        return this;
+    };
+    res.get = function (name: string) {
+        return this.getHeader(name);
+    };
+    res.json = function (data: { [key: string]: any }) {
+        _send(this, JSON.stringify(data), JSON_TYPE + CHARSET);
     };
     res.send = function (data: any) {
         if (typeof data === 'string') this.end(data);
@@ -47,35 +55,25 @@ function response(res: Response, engine: any) {
             this.setHeader(CONTENT_TYPE, this.getHeader(CONTENT_TYPE) || OCTET_TYPE);
             data.pipe(this);
         }
-        else if (Buffer.isBuffer(data)) this.type(this.getHeader(CONTENT_TYPE) || OCTET_TYPE).end(data);
+        else if (Buffer.isBuffer(data)) this.type(this.getHeader(CONTENT_TYPE) || 'bin').end(data);
         else if (typeof data === 'object') this.json(data);
         else res.end(data || STATUS_CODES[this.statusCode]);
     };
-    res.sendFile = function (data: any) {
-        if (typeof data === 'string') {
-            this.setHeader(CONTENT_TYPE, this.getHeader(CONTENT_TYPE) || getMimeType(data));
-            let fStream = fs.createReadStream(data);
-            fStream.pipe(this);
-        } else {
-            this.setHeader(CONTENT_TYPE, this.getHeader(CONTENT_TYPE) || OCTET_TYPE);
-            data.pipe(this);
-        }
+    res.sendFile = function (filepath: string) {
+        this.setHeader(CONTENT_TYPE, this.getHeader(CONTENT_TYPE) || getMimeType(filepath));
+        let fStream = fs.createReadStream(filepath);
+        fStream.pipe(this);
     };
     res.redirect = function (path: string) {
         let code = this.statusCode === 200 ? 302 : this.statusCode;
         this.writeHead(code, { 'Location': path });
         this.end();
     };
-    res.download = function (data: any) {
+    res.download = function (filepath: string) {
         let content = 'content-disposition';
-        if (typeof data === 'string') {
-            this.setHeader(content, this.getHeader(content) || 'attachment; filename=' + path.basename(data))
-            let fStream = fs.createReadStream(data);
-            fStream.pipe(this);
-        } else {
-            this.setHeader(content, this.getHeader(content) || 'attachment; filename=no-content-disposition.txt');
-            data.pipe(this);
-        }
+        this.setHeader(content, this.getHeader(content) || 'attachment; filename=' + path.basename(filepath))
+        let fStream = fs.createReadStream(filepath);
+        fStream.pipe(this);
     };
     res.render = function (source: string, ...args: any) {
         let idx = source.indexOf('.'),

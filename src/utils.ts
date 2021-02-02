@@ -19,9 +19,7 @@ export function getParamNames(func: Function) {
 
 function onError(err: any, res: Response, useDebugError: boolean) {
     let obj: any = getError(err, useDebugError);
-    res.statusCode = obj.statusCode;
-    obj = JSON.stringify(obj);
-    return res.end(obj);
+    return res.code(obj.statusCode).json(obj);
 }
 
 export function getError(err: any, useDebugError: boolean = false, req?: Request) {
@@ -103,7 +101,8 @@ export function modPath(prefix: string) {
 
 export function toPathx(path: string | RegExp, isAll: boolean) {
     if (path instanceof RegExp) return { params: null, pathx: path };
-    if (path.match(/\?|\*|\./gi) === null && isAll === false) {
+    let trgx = /\?|\*|\./g;
+    if (!trgx.test(path) && isAll === false) {
         let len = (path.match(/\/:/gi) || []).length;
         if (len === 0) return;
         if (len === 1) {
@@ -112,7 +111,7 @@ export function toPathx(path: string | RegExp, isAll: boolean) {
         }
     };
     let params = [], pattern = '', strReg = '/([^/]+?)', strRegQ = '(?:/([^/]+?))?';
-    if (path.match(/\?|\*|\./gi)) {
+    if (trgx.test(path)) {
         let arr = path.split('/'), obj: string | any[], el: string, i = 0; arr.shift();
         for (; i < arr.length; i++) {
             obj = arr[i];
@@ -140,7 +139,7 @@ export function toPathx(path: string | RegExp, isAll: boolean) {
 export function parseurl(req: Request) {
     let str = req.url, url = req._parsedUrl;
     if (url && url._raw === str) return url;
-    let pathname = str, query = null, search = null, i = 1, len = str.length;
+    let pathname = str, query = null, search = null, i = 0, len = str.length;
     while (i < len) {
         if (str.charCodeAt(i) === 0x3f) {
             pathname = str.substring(0, i);
@@ -148,7 +147,7 @@ export function parseurl(req: Request) {
             search = str.substring(i);
             break;
         }
-        ++i;
+        i++;
     }
     url = {};
     url.path = url._raw = url.href = str;
@@ -158,12 +157,11 @@ export function parseurl(req: Request) {
     return (req._parsedUrl = url);
 }
 
-export async function withPromise(handler: any, res: Response, next: NextFunction, isWrapError: boolean = false) {
+export async function sendPromise(handler: any, res: Response, next: NextFunction, isWrapError: boolean = false) {
     try {
-        let fn = await handler;
-        if (typeof fn === 'string') res.end(fn);
-        else if (typeof fn === 'object') res.json(fn);
-        else return fn;
+        let ret = await handler;
+        if (!ret) return;
+        res.send(ret);
     } catch (err) {
         if (isWrapError) onError(err, res, true);
         else next(err);
@@ -171,83 +169,66 @@ export async function withPromise(handler: any, res: Response, next: NextFunctio
 }
 
 export function wrapError(handler: any) {
-    const isAsync = handler.constructor.name === "AsyncFunction";
-    return isAsync ? async function (err: any, req: Request, res: Response, next: NextFunction) {
+    return function (err: any, req: Request, res: Response, next: NextFunction) {
+        let ret: Promise<any>;
         try {
-            let fn = await handler(err, req, res, next);
-            if (fn) {
-                if (typeof fn === 'string') res.end(fn);
-                else res.json(fn);
-            };
+            ret = handler(err, req, res, next);
         } catch (err) {
             onError(err, res, true);
+            return;
         }
-    } : function (err: any, req: Request, res: Response, next: NextFunction) {
-        try {
-            let fn = handler(err, req, res, next);
-            if (fn) {
-                if (typeof fn === 'string') res.end(fn);
-                else if (typeof fn.then === 'function') return withPromise(fn, res, next, true);
-                else res.json(fn);
-            };
-        } catch (err) {
-            onError(err, res, true);
-        }
+        if (ret) {
+            if (typeof ret.then === 'function') return sendPromise(ret, res, next, true);
+            res.send(ret);
+        };
     };
 };
 
-export function finalHandler(req: Request, res: Response, limit: number | string, qs_parse: any, useDebugError: boolean, defaultBody: boolean, method: any, next: (err?: any) => void) {
-    if (method === 'GET') next();
-    else if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
-        if (!defaultBody) {
-            next();
-            return;
-        };
-        let header = req.headers;
-        if (isTypeBodyPassed(header, JSON_TYPE) ||
-            isTypeBodyPassed(header, TEXT_PLAIN_TYPE) ||
-            isTypeBodyPassed(header, FORM_URLENCODED_TYPE)
-        ) {
-            let chunks = [], error = null;
-            req.on('data', (buf: Buffer) => {
-                let lmt = parsebytes(limit), len = req.headers['content-length'] || Buffer.byteLength(buf);
-                try {
-                    if (len > lmt) {
-                        throw new Error('Body is too large');
-                    } else {
-                        chunks.push(buf);
-                    }
-                } catch (err) {
-                    error = err;
-                }
-            }).on('end', () => {
-                if (!chunks.length) {
-                    req._body = false;
-                    req.body = {};
-                    return next();
-                }
-                if (error) return onError(error, res, useDebugError);
-                let urlencode_parse = qs_parse || parsequery, str = Buffer.concat(chunks).toString(), body = null;
-                if (isTypeBodyPassed(header, JSON_TYPE)) {
-                    try {
-                        body = JSON.parse(str);
-                    } catch (err) {
-                        return onError(err, res, useDebugError);
-                    }
-                } else if (isTypeBodyPassed(header, TEXT_PLAIN_TYPE)) {
-                    body = str;
-                } else if (isTypeBodyPassed(header, FORM_URLENCODED_TYPE)) {
-                    try {
-                        body = urlencode_parse(str);
-                    } catch (err) {
-                        return onError(err, res, useDebugError);
-                    }
-                }
-                req._body = true;
-                req.body = body || {};
+export function finalHandler(req: Request, res: Response, limit: number | string, qs_parse: any, useDebugError: boolean, defaultBody: boolean, next: (err?: any) => void) {
+    if (defaultBody === false) {
+        next();
+        return;
+    };
+    let method = req.method;
+    if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
+        let chunks = [], error = null;
+        req.on('data', (buf: Buffer) => {
+            let lmt = parsebytes(limit), len = Buffer.byteLength(buf);
+            try {
+                if (len > lmt) throw new Error('Body is too large. max limit ' + limit); 
+                else chunks.push(buf);
+            } catch (err) {
+                error = err;
+            }
+        }).on('end', () => {
+            if (error) return onError(error, res, useDebugError);
+            if (!chunks.length) {
                 next();
-            });
-        } else next();
+                return;
+            }
+            let header = req.headers,
+                urlencode_parse = qs_parse || parsequery,
+                str = Buffer.concat(chunks).toString(),
+                body = undefined;
+            if (isTypeBodyPassed(header, JSON_TYPE)) {
+                try {
+                    body = JSON.parse(str);
+                } catch (err) {
+                    return onError(err, res, useDebugError);
+                }
+            } 
+            else if (isTypeBodyPassed(header, TEXT_PLAIN_TYPE)) body = str; 
+            else if (isTypeBodyPassed(header, FORM_URLENCODED_TYPE)) {
+                try {
+                    body = urlencode_parse(str);
+                } catch (err) {
+                    return onError(err, res, useDebugError);
+                }
+            }
+            req._body = body !== undefined;
+            req.body = body || {};
+            next();
+        });
     } else next();
 }
 
