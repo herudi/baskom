@@ -1,10 +1,12 @@
 import { NextFunction, Request, Response, THandler } from "./types";
 import { findBase } from "./utils";
 
-function addMidd(url: string, mid1: any, mid2: any[], nf: (req: Request, res: Response, next?: NextFunction) => void, fns: any[]) {
-    let pfx = findBase(url);
-    if (mid1[pfx]) fns = mid1[pfx].concat(fns);
-    if (mid2.length) fns = mid2.concat(fns);
+function addMidd(url: string, midds: any[], nf: (req: Request, res: Response, next?: NextFunction) => void, fns: any[], midAsset?: any) {
+    if (midAsset !== void 0) {
+        let pfx = findBase(url);
+        if (midAsset[pfx]) fns = midAsset[pfx].concat(fns);
+    }
+    if (midds.length) fns = midds.concat(fns);
     return (fns = fns.concat([nf]));
 }
 
@@ -30,7 +32,7 @@ export default class Router {
             let obj = this.routes[method + url];
             if (obj.m) handlers = obj.handlers;
             else {
-                handlers = addMidd(url, this.pmidds, this.midds, notFound, obj.handlers);
+                handlers = addMidd(url, this.midds, notFound, obj.handlers);
                 this.routes[method + url] = { m: true, handlers };
             }
         } else {
@@ -46,22 +48,23 @@ export default class Router {
                 params[obj.params] = url.substring(url.lastIndexOf('/') + 1);
                 if (obj.m) handlers = obj.handlers;
                 else {
-                    handlers = addMidd(url, this.pmidds, this.midds, notFound, obj.handlers);
+                    handlers = addMidd(url, this.midds, notFound, obj.handlers);
                     this.routes[method + key + '/:p'] = { m: true, params: obj.params, handlers };
                 }
-            } else {
+            }
+            else {
                 if (this.routes['ALL'] !== undefined) {
                     if (this.routes[method] === undefined) this.routes[method] = [];
                     this.routes[method] = this.routes[method].concat(this.routes['ALL']);
                 }
-                let i = 0, j = 0, obj: any = {}, routes = this.routes[method] || [], matches = [], len = routes.length, nf;
+                let i = 0, j = 0, obj: any = {}, routes = this.routes[method] || [], matches = [], len = routes.length, nf = true;
                 while (i < len) {
                     obj = routes[i];
                     if (obj.pathx && obj.pathx.test(url)) {
                         nf = false;
                         if (obj.m) handlers = obj.handlers;
                         else {
-                            handlers = addMidd(url, this.pmidds, this.midds, notFound, obj.handlers);
+                            handlers = addMidd(url, this.midds, notFound, obj.handlers);
                             this.routes[method][i] = { m: true, params: obj.params, handlers, pathx: obj.pathx };
                         }
                         if (obj.params) {
@@ -73,7 +76,7 @@ export default class Router {
                     }
                     i++;
                 }
-                if (nf === undefined) handlers.push(notFound);
+                if (nf) handlers = addMidd(url, this.midds, notFound, [], this.pmidds);
             }
         }
         return { params, handlers };
