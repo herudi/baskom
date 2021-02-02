@@ -58,23 +58,25 @@ export default class Router {
                     this.routes[method] = this.routes[method].concat(this.routes['ALL']);
                 }
                 let i = 0, j = 0, obj: any = {}, routes = this.routes[method] || [], matches = [], len = routes.length, nf = true;
-                while (i < len) {
-                    obj = routes[i];
-                    if (obj.pathx && obj.pathx.test(url)) {
-                        nf = false;
-                        if (obj.m) handlers = obj.handlers;
-                        else {
-                            handlers = addMidd(url, this.midds, notFound, obj.handlers);
-                            this.routes[method][i] = { m: true, params: obj.params, handlers, pathx: obj.pathx };
+                if (len) {
+                    while (i < len) {
+                        obj = routes[i];
+                        if (obj.pathx && obj.pathx.test(url)) {
+                            nf = false;
+                            if (obj.m) handlers = obj.handlers;
+                            else {
+                                handlers = addMidd(url, this.midds, notFound, obj.handlers);
+                                this.routes[method][i] = { m: true, params: obj.params, handlers, pathx: obj.pathx };
+                            }
+                            if (obj.params) {
+                                matches = obj.pathx.exec(url);
+                                while (j < obj.params.length) params[obj.params[j]] = matches[++j] || null;
+                                if (params['wild']) params['wild'] = params['wild'].split('/');
+                            }
+                            break;
                         }
-                        if (obj.params) {
-                            matches = obj.pathx.exec(url);
-                            while (j < obj.params.length) params[obj.params[j]] = matches[++j] || null;
-                            if (params['wild']) params['wild'] = params['wild'].split('/');
-                        }
-                        break;
+                        i++;
                     }
-                    i++;
                 }
                 if (nf) handlers = addMidd(url, this.midds, notFound, [], this.pmidds);
             }
