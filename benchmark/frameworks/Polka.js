@@ -1,13 +1,16 @@
 const polka = require('polka');
 
-function midd(req, res, next){
+function midd(req, res, next) {
     req.foo = 'foo';
     next();
 }
 
-polka()
-    .use(midd)
-    .get('/hello/:name', (req, res) => {
-        res.end(`Hello ${req.params.name} - ${req.foo}`);
+const app = polka();
+app.use(midd);
+for (let i = 0; i < 1000; i++) {
+    app.get('/hello' + i, (req, res) => {
+        res.end('hello route ' + i);
     })
-    .listen(3000);
+}
+
+app.listen(3000);

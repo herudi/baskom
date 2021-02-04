@@ -5,12 +5,12 @@ import { OCTET_TYPE, CONTENT_LENGTH, CONTENT_TYPE, JSON_TYPE, CHARSET, MIME_TYPE
 import { Response } from './types';
 import { getMimeType } from './utils';
 
-function _send(res: Response, data: string, contentType: string | number) {
+function _send(res: Response, data: string, contentType: string) {
     if (res._header) {
         res.end(data);
         return;
     }
-    let header = {}, code = res.statusCode;
+    let header: { [key: string]: string } = {}, code = res.statusCode;
     header[CONTENT_TYPE] = contentType;
     header[CONTENT_LENGTH] = '' + Buffer.byteLength(data);
     res.writeHead(code, header);
@@ -55,7 +55,7 @@ function response(res: Response, engine: any) {
             this.setHeader(CONTENT_TYPE, this.getHeader(CONTENT_TYPE) || OCTET_TYPE);
             data.pipe(this);
         }
-        else if (Buffer.isBuffer(data)) this.type(this.getHeader(CONTENT_TYPE) || 'bin').end(data);
+        else if (Buffer.isBuffer(data)) this.type((this.getHeader(CONTENT_TYPE) || 'bin') as string).end(data);
         else if (typeof data === 'object') this.json(data);
         else res.end(data || STATUS_CODES[this.statusCode]);
     };

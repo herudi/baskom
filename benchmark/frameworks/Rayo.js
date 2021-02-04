@@ -1,13 +1,16 @@
 const rayo = require('rayo');
 
-function midd(req, res, next){
+function midd(req, res, next) {
     req.foo = 'foo';
     next();
 }
 
-rayo({ port: 3000 })
-    .through(midd)
-    .get('/hello/:name', (req, res) => {
-        res.end(`Hello ${req.params.name} - ${req.foo}`);
+const app = rayo({ port: 3000 });
+app.through(midd);
+for (let i = 0; i < 1000; i++) {
+    app.get('/hello' + i, (req, res) => {
+        res.end('hello route ' + i);
     })
-    .start();
+}
+
+app.start();

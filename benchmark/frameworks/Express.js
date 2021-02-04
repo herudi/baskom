@@ -1,3 +1,4 @@
+require('events').EventEmitter.defaultMaxListeners = Infinity;
 const express = require('express');
 
 function midd(req, res, next) {
@@ -5,11 +6,14 @@ function midd(req, res, next) {
     next();
 }
 
-express()
-    .disable('etag')
-    .disable('x-powered-by')
-    .use(midd)
-    .get('/hello/:name', (req, res) => {
-        res.send(`Hello ${req.params.name} - ${req.foo}`);
+const app = express();
+app.disable('etag');
+app.disable('x-powered-by');
+app.use(midd);
+for (let i = 0; i < 1000; i++) {
+    app.get('/hello' + i, (req, res) => {
+        res.end('hello route ' + i);
     })
-    .listen(3000);
+}
+
+app.listen(3000);

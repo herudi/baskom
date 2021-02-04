@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response, THandler } from "./types";
 import { findBase } from "./utils";
 
-function addMidd(url: string, midds: any[], nf: (req: Request, res: Response, next?: NextFunction) => void, fns: any[], midAsset?: any) {
+function addMidd(url: string, midds: any[], nf: (req: Request, res: Response, next: NextFunction) => void, fns: any[], midAsset?: any) {
     if (midAsset !== void 0) {
         let pfx = findBase(url);
         if (midAsset[pfx]) fns = midAsset[pfx].concat(fns);
@@ -14,7 +14,7 @@ export default class Router {
     routes: any;
     c_routes: any[];
     midds: any[];
-    pmidds: {};
+    pmidds: { [key: string]: any[] };
     constructor() {
         this.routes = {};
         this.c_routes = [];
@@ -26,8 +26,8 @@ export default class Router {
         this.c_routes.push({ method, path, handlers });
         return this;
     }
-    getRoute(method: string, url: string, notFound: any) {
-        let params = {}, handlers = [];
+    getRoute(method: string, url: string, notFound: (req: Request, res: Response, next: NextFunction) => void) {
+        let params: { [key: string]: any } = {}, handlers: any[] = [];
         if (this.routes[method + url]) {
             let obj = this.routes[method + url];
             if (obj.m) handlers = obj.handlers;

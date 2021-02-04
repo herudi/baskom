@@ -29,7 +29,7 @@ const cannon = (title = null) =>
     autocannon(
       {
         title,
-        url: argv.u || 'http://localhost:3000/hello/john',
+        url: argv.u || 'http://localhost:3000/hello500',
         connections: argv.c || 100,
         pipelining: argv.p || 10,
         duration: argv.d || 5

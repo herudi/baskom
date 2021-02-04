@@ -1,8 +1,34 @@
 import { MIME_TYPES, OCTET_TYPE, JSON_TYPE, TEXT_PLAIN_TYPE, FORM_URLENCODED_TYPE, CONTENT_TYPE } from './constant';
 import { parse as parsequery } from 'querystring';
-import { Request, Response, NextFunction } from './types';
+import { Request, Response, NextFunction, TErrorResponse } from './types';
 import * as pathnode from 'path';
 import * as fs from 'fs';
+
+type TSizeList = {
+    b: number;
+    kb: number;
+    mb: number;
+    gb: number;
+    tb: number;
+    pb: number;
+    [key: string]: any;
+};
+
+type TMapEngine = { 
+    handlebars: string; 
+    vash: string; 
+    nunjucks: string; 
+    mustache: string;
+    [key: string]: any; 
+};
+
+type TDefaultEngineParam = {
+    name: string;
+    engine: any;
+    header: { [key: string]: string | number | string[] };
+    settings: { [key: string]: any };
+    options?: { [key: string]: any };
+}
 
 function isTypeBodyPassed(header: any, _type: string) {
     return header[CONTENT_TYPE.toLowerCase()] && header[CONTENT_TYPE.toLowerCase()].indexOf(_type) !== -1;
@@ -22,10 +48,10 @@ function onError(err: any, res: Response, useDebugError: boolean) {
     return res.code(obj.statusCode).json(obj);
 }
 
-export function getError(err: any, useDebugError: boolean = false, req?: Request) {
+export function getError(err: any, useDebugError: boolean = false, req?: Request): TErrorResponse {
     let code = err.code || err.status || err.statusCode || 500;
     if (typeof code !== "number") code = 500;
-    let debug: any;
+    let debug: { [key: string]: any } | undefined;
     if (useDebugError && err.stack) {
         let stack = err.stack.split('\n');
         stack.shift();
@@ -61,7 +87,7 @@ export function findBase(pathname: string) {
 }
 
 export function getEngine(arg: any) {
-    let defaultDir = pathnode.join(pathnode.dirname(require.main.filename || process.mainModule.filename), 'views'),
+    let defaultDir = pathnode.join(pathnode.dirname((require as any).main.filename || (process as any).mainModule.filename), 'views'),
         _ext = arg.ext,
         _basedir = pathnode.resolve(arg.basedir || defaultDir),
         _render = arg.render;
@@ -93,7 +119,7 @@ export function getEngine(arg: any) {
 
 export function modPath(prefix: string) {
     return function (req: Request, res: Response, next: NextFunction) {
-        req.url = req.url.substring(prefix.length) || '/';
+        req.url = (req.url as string).substring(prefix.length) || '/';
         req.path = req.path ? req.path.substring(prefix.length) || '/' : '/';
         next();
     }
@@ -110,7 +136,7 @@ export function toPathx(path: string | RegExp, isAll: boolean) {
             if (arr[arr.length - 1].indexOf('/') === -1) return { params: arr[1], key: arr[0] + '/:p', pathx: null };
         }
     };
-    let params = [], pattern = '', strReg = '/([^/]+?)', strRegQ = '(?:/([^/]+?))?';
+    let params: any[] | string | null = [], pattern = '', strReg = '/([^/]+?)', strRegQ = '(?:/([^/]+?))?';
     if (trgx.test(path)) {
         let arr = path.split('/'), obj: string | any[], el: string, i = 0; arr.shift();
         for (; i < arr.length; i++) {
@@ -137,7 +163,7 @@ export function toPathx(path: string | RegExp, isAll: boolean) {
 }
 
 export function parseurl(req: Request) {
-    let str = req.url, url = req._parsedUrl;
+    let str: any = req.url, url = req._parsedUrl;
     if (url && url._raw === str) return url;
     let pathname = str, query = null, search = null, i = 0, len = str.length;
     while (i < len) {
@@ -169,7 +195,7 @@ export async function sendPromise(handler: any, res: Response, next: NextFunctio
 }
 
 export function wrapError(handler: any) {
-    return function (err: any, req: Request, res: Response, next: NextFunction) {
+    return function (err: Error, req: Request, res: Response, next: NextFunction) {
         let ret: Promise<any>;
         try {
             ret = handler(err, req, res, next);
@@ -191,11 +217,11 @@ export function finalHandler(req: Request, res: Response, limit: number | string
     };
     let method = req.method;
     if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
-        let chunks = [], error = null;
+        let chunks: Uint8Array[] | Buffer[] = [], error: null = null;
         req.on('data', (buf: Buffer) => {
             let lmt = parsebytes(limit), len = Buffer.byteLength(buf);
             try {
-                if (len > lmt) throw new Error('Body is too large. max limit ' + limit); 
+                if (len > lmt) throw new Error('Body is too large. max limit ' + limit);
                 else chunks.push(buf);
             } catch (err) {
                 error = err;
@@ -216,8 +242,8 @@ export function finalHandler(req: Request, res: Response, limit: number | string
                 } catch (err) {
                     return onError(err, res, useDebugError);
                 }
-            } 
-            else if (isTypeBodyPassed(header, TEXT_PLAIN_TYPE)) body = str; 
+            }
+            else if (isTypeBodyPassed(header, TEXT_PLAIN_TYPE)) body = str;
             else if (isTypeBodyPassed(header, FORM_URLENCODED_TYPE)) {
                 try {
                     body = urlencode_parse(str);
@@ -233,7 +259,7 @@ export function finalHandler(req: Request, res: Response, limit: number | string
 }
 
 function parsebytes(arg: string | number) {
-    let sizeList = { b: 1, kb: 1 << 10, mb: 1 << 20, gb: 1 << 30, tb: Math.pow(1024, 4), pb: Math.pow(1024, 5) }
+    let sizeList: TSizeList = { b: 1, kb: 1 << 10, mb: 1 << 20, gb: 1 << 30, tb: Math.pow(1024, 4), pb: Math.pow(1024, 5) }
     if (typeof arg === 'number') return arg;
     let arr = (/^((-|\+)?(\d+(?:\.\d+)?)) *(kb|mb|gb|tb|pb)$/i).exec(arg), val: any, unt = 'b';
     if (!arr) {
@@ -253,21 +279,15 @@ export function getMimeType(str: string) {
     return types[str] || OCTET_TYPE;
 };
 
-const mapEngine = {
+const mapEngine: TMapEngine = {
     'handlebars': 'compile',
     'vash': 'compile',
     'nunjucks': 'renderSource',
     'mustache': 'render'
 }
 
-export function defaultRenderEngine(obj: {
-    name: string;
-    engine: any;
-    header: any;
-    settings: any;
-    options?: any;
-}) {
-    return function (res: Response, source: any, ...args: any) {
+export function defaultRenderEngine(obj: TDefaultEngineParam) {
+    return function (res: Response, source: string, ...args: any) {
         let result: any,
             engine = obj.engine,
             name = obj.name,
@@ -278,7 +298,7 @@ export function defaultRenderEngine(obj: {
         if (!args.length) args.push({ settings: obj.settings });
         else Object.assign(args[0], { settings: obj.settings });
         if (typeof engine === 'function') {
-            engine(source, ...args, (err: any, out: any) => {
+            engine(source, ...args, (err: Error, out: string) => {
                 if (err) throw err;
                 res.writeHead(res.statusCode, header);
                 res.end(out);

@@ -5,9 +5,12 @@ function midd(req, res, next) {
     next();
 }
 
-fastify()
-    .addHook('onRequest', midd)
-    .get('/hello/:name', (req, res) => {
-        res.send(`Hello ${req.params.name} - ${req.foo}`);
+const app = fastify();
+app.addHook('onRequest', midd);
+for (let i = 0; i < 1000; i++) {
+    app.get('/hello' + i, (req, res) => {
+        res.send('hello route ' + i);
     })
-    .listen(3000);
+}
+
+app.listen(3000);

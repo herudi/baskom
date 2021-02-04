@@ -8,6 +8,8 @@
         "target": "ES6",
         "removeComments": true,
         "moduleResolution": "Node",
-        "declaration": true
+        "declaration": true,
+        "strict": true,
+        "noImplicitThis": false
     }
 }

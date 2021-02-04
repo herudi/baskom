@@ -1,13 +1,43 @@
 # Benchmark
 
 Server => Nodejs v12.16.3, Ubuntu 16.04.6 LTS, Memory 16GB, Processor Intel(R) Xeon(R) Gold 6126 CPU @ 2.60GHz.
-<br></br>
+> note : try to 1000+ route on url http://localhost:3000/hello500
+
 Usage => yarn bench
-|Frameworks |Version |Requests/sec |Latency |Throughput/Mb |
-|--- |--- |--- |--- |--- |
-|Baskom|0.1.9|61609.6|1.51|6.46|
-|Fastify|3.8.0|60515.2|1.55|9.06|
-|Polka|0.5.2|56073.6|1.68|6.20|
-|Rayo|1.3.6|53353.6|1.77|5.90|
-|Express|4.17.1|28635.2|3.4|4.26|
+```bash
+┌─────────┬─────────┬──────────────┬─────────┬───────────────┐
+│         │ Version │ Requests/sec │ Latency │ Throughput/Mb │
+├─────────┼─────────┼──────────────┼─────────┼───────────────┤
+│ Baskom  │ 0.2.0   │ 67881.61     │ 1.38    │ 7.44          │
+├─────────┼─────────┼──────────────┼─────────┼───────────────┤
+│ Fastify │ 3.8.0   │ 59171.2      │ 1.59    │ 8.80          │
+├─────────┼─────────┼──────────────┼─────────┼───────────────┤
+│ Rayo    │ 1.3.6   │ 35844.81     │ 2.7     │ 3.93          │
+├─────────┼─────────┼──────────────┼─────────┼───────────────┤
+│ Polka   │ 0.5.2   │ 35280        │ 2.74    │ 3.87          │
+├─────────┼─────────┼──────────────┼─────────┼───────────────┤
+│ Express │ 4.17.1  │ 9642.4       │ 10.14   │ 2.01          │
+└─────────┴─────────┴──────────────┴─────────┴───────────────┘
+
+```
+
+Framework.js
+```js
+const framework = require('framework');
+
+function midd(req, res, next) {
+    req.foo = 'foo';
+    next();
+}
+
+const app = framework();
+app.use(midd);
+for (let i = 0; i < 1000; i++) {
+    app.get('/hello' + i, (req, res) => {
+        res.send('hello route ' + i);
+    })
+}
+
+app.listen(3000);
+```
 

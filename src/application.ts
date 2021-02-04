@@ -6,7 +6,7 @@ import { parse as parsequery } from 'querystring';
 import { generalError, getParamNames, parseurl, sendPromise, finalHandler, getError, wrapError, toPathx, getEngine, modPath } from './utils';
 import response from './response';
 import request from './request';
-import { THandler, IApp, Request, Response, NextFunction, TEHandler } from './types';
+import { THandler, IApp, Request, Response, NextFunction, TEHandler, TErrorResponse } from './types';
 
 interface Application extends Router {
     use(prefix: string, routers: Router[]): this;
@@ -31,8 +31,8 @@ interface Application extends Router {
     withCluster(callback: () => void): void;
     withCluster(...args: any): void;
 }
-function findFns(arr: any[]) {
-    let ret = [], i = 0, len = arr.length;
+function findFns(arr: any[]): any[] {
+    let ret: any[] = [], i = 0, len = arr.length;
     for (; i < len; i++) {
         if (Array.isArray(arr[i])) ret = ret.concat(findFns(arr[i]));
         else if (typeof arr[i] === 'function') ret.push(arr[i]);
@@ -53,13 +53,13 @@ function preNext(cb: (req: Request, res: Response, next: NextFunction) => void, 
     return cb(req, res, next);
 }
 class Application extends Router {
-    private error: (err: any, req: Request, res: Response, next: NextFunction) => any;
+    private error: (err: Error, req: Request, res: Response, next: NextFunction) => void;
     private notFound: (req: Request, res: Response, next: NextFunction) => void;
     private parsequery: any;
     private debugError: boolean;
     private bodyLimit: string | number;
-    private engine: any;
-    private workers: any;
+    private engine: { [key: string]: any };
+    private workers: any[];
     private defaultBody: boolean;
     private server: any;
     private serverTimeout: number;
@@ -86,7 +86,7 @@ class Application extends Router {
     }
 
     call(method: string, path: string, ...handlers: Array<THandler | THandler[]>) {
-        let fns = handlers.length === 1 ? handlers : findFns(handlers);
+        let fns = findFns(handlers);
         let obj = toPathx(path, method === 'ALL');
         if (obj !== void 0) {
             if (obj.key) {
@@ -99,7 +99,7 @@ class Application extends Router {
         return this;
     }
 
-    getError(err: any, req: Request, res: Response) {
+    getError(err: Error, req: Request, res: Response): TErrorResponse {
         let data = getError(err, this.debugError, req);
         res.code(data.statusCode);
         return data;
@@ -138,7 +138,7 @@ class Application extends Router {
 
     private requestListener(req: Request, res: Response) {
         let url = parseurl(req),
-            obj = this.getRoute(req.method, url.pathname, this.notFound), i = 0,
+            obj = this.getRoute((req.method as string), url.pathname, this.notFound), i = 0,
             next: (err?: any) => void = (err?: any) => {
                 if (err === void 0) {
                     let ret: Promise<any>;
@@ -162,7 +162,7 @@ class Application extends Router {
     }
 
     withCluster(...args: any) {
-        let opts: any = { numCPUs: os.cpus().length }, cb = args[0];
+        let opts: { numCPUs: number } = { numCPUs: os.cpus().length }, cb = args[0];
         if (typeof args[0] === 'object') {
             opts = args[0];
             cb = args[1];

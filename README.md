@@ -1,10 +1,11 @@
 # Baskom js
 
-[![npm version](https://img.shields.io/badge/npm-0.1.26-blue.svg)](https://npmjs.org/package/baskom) 
+[![npm version](https://img.shields.io/badge/npm-0.2.0-blue.svg)](https://npmjs.org/package/baskom) 
 [![License](https://img.shields.io/:license-mit-blue.svg)](http://badges.mit-license.org)
 [![download-url](https://img.shields.io/npm/dm/baskom.svg)](https://npmjs.org/package/baskom)
 
 Fast and fun nodejs framework with easy to use.
+> Try with 1000+ route your app still fast with baskom. [benchmark](https://github.com/herudi/baskom/tree/main/benchmark)
 
 ## Features
 

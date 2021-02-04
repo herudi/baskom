@@ -54,4 +54,11 @@ export type TEHandler = (
     next: NextFunction
 ) => any;
 
+export type TErrorResponse = {
+    statusCode: number;
+    name: string;
+    message: string;
+    debug?: { [key: string]: any } | undefined;
+}
+
 
