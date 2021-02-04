@@ -13,7 +13,7 @@ app.use(bodyParser.json());
 
 app.post('/user', (req, res) => {
     console.log(req.body);
-    res.code = 201;
+    res.code(201);
     return 'User Created';
 })
 
