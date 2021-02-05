@@ -53,11 +53,9 @@ export default class Router {
                 }
             }
             else {
-                if (this.routes['ALL'] !== undefined) {
-                    if (this.routes[method] === undefined) this.routes[method] = [];
-                    this.routes[method] = this.routes[method].concat(this.routes['ALL']);
-                }
-                let i = 0, j = 0, obj: any = {}, routes = this.routes[method] || [], matches = [], len = routes.length, nf = true;
+                let i = 0, j = 0, obj: any = {}, routes = this.routes[method] || [], matches = [], nf = true;
+                if (this.routes['ALL']) routes = routes.concat(this.routes['ALL']);
+                let len = routes.length;
                 if (len) {
                     while (i < len) {
                         obj = routes[i];
@@ -66,7 +64,9 @@ export default class Router {
                             if (obj.m) handlers = obj.handlers;
                             else {
                                 handlers = addMidd(url, this.midds, notFound, obj.handlers);
-                                this.routes[method][i] = { m: true, params: obj.params, handlers, pathx: obj.pathx };
+                                if (this.routes[method] && this.routes[method][i]) {
+                                    this.routes[method][i] = { m: true, params: obj.params, handlers, pathx: obj.pathx };
+                                }
                             }
                             if (obj.params) {
                                 matches = obj.pathx.exec(url);

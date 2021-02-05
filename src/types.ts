@@ -24,7 +24,7 @@ export interface Response extends ServerResponse {
     code(code: number): this;
     status(code: number): this;
     type(contentType: string): this;
-    json(data: { [key: string]: any }): void;
+    json(data: { [key: string]: any } | null): void;
     send(data: any): void;
     render(pathfile: string, param: any, option: any): void;
     render(pathfile: string, param: any): void;

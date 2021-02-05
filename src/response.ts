@@ -46,7 +46,7 @@ function response(res: Response, engine: any) {
     res.get = function (name: string) {
         return this.getHeader(name);
     };
-    res.json = function (data: { [key: string]: any }) {
+    res.json = function (data: { [key: string]: any } | null) {
         _send(this, JSON.stringify(data), JSON_TYPE + CHARSET);
     };
     res.send = function (data: any) {
