@@ -14,12 +14,12 @@ type TSizeList = {
     [key: string]: any;
 };
 
-type TMapEngine = { 
-    handlebars: string; 
-    vash: string; 
-    nunjucks: string; 
+type TMapEngine = {
+    handlebars: string;
+    vash: string;
+    nunjucks: string;
     mustache: string;
-    [key: string]: any; 
+    [key: string]: any;
 };
 
 type TDefaultEngineParam = {
@@ -217,44 +217,48 @@ export function finalHandler(req: Request, res: Response, limit: number | string
     };
     let method = req.method;
     if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
-        let chunks: Uint8Array[] | Buffer[] = [], error: null = null;
-        req.on('data', (buf: Buffer) => {
-            let lmt = parsebytes(limit), len = Buffer.byteLength(buf);
-            try {
-                if (len > lmt) throw new Error('Body is too large. max limit ' + limit);
-                else chunks.push(buf);
-            } catch (err) {
-                error = err;
-            }
-        }).on('end', () => {
-            if (error) return onError(error, res, useDebugError);
-            if (!chunks.length) {
+        let header = req.headers;
+        if (isTypeBodyPassed(header, JSON_TYPE) ||
+            isTypeBodyPassed(header, TEXT_PLAIN_TYPE) ||
+            isTypeBodyPassed(header, FORM_URLENCODED_TYPE)) {
+            let chunks: Uint8Array[] | Buffer[] = [], error: null = null;
+            req.on('data', (buf: Buffer) => {
+                let lmt = parsebytes(limit), len = Buffer.byteLength(buf);
+                try {
+                    if (len > lmt) throw new Error('Body is too large. max limit ' + limit);
+                    else chunks.push(buf);
+                } catch (err) {
+                    error = err;
+                }
+            }).on('end', () => {
+                if (error) return onError(error, res, useDebugError);
+                if (!chunks.length) {
+                    next();
+                    return;
+                }
+                let urlencode_parse = qs_parse || parsequery,
+                    str = Buffer.concat(chunks).toString(),
+                    body = undefined;
+                if (isTypeBodyPassed(header, JSON_TYPE)) {
+                    try {
+                        body = JSON.parse(str);
+                    } catch (err) {
+                        return onError(err, res, useDebugError);
+                    }
+                }
+                else if (isTypeBodyPassed(header, TEXT_PLAIN_TYPE)) body = str;
+                else if (isTypeBodyPassed(header, FORM_URLENCODED_TYPE)) {
+                    try {
+                        body = urlencode_parse(str);
+                    } catch (err) {
+                        return onError(err, res, useDebugError);
+                    }
+                }
+                req._body = body !== undefined;
+                req.body = body || {};
                 next();
-                return;
-            }
-            let header = req.headers,
-                urlencode_parse = qs_parse || parsequery,
-                str = Buffer.concat(chunks).toString(),
-                body = undefined;
-            if (isTypeBodyPassed(header, JSON_TYPE)) {
-                try {
-                    body = JSON.parse(str);
-                } catch (err) {
-                    return onError(err, res, useDebugError);
-                }
-            }
-            else if (isTypeBodyPassed(header, TEXT_PLAIN_TYPE)) body = str;
-            else if (isTypeBodyPassed(header, FORM_URLENCODED_TYPE)) {
-                try {
-                    body = urlencode_parse(str);
-                } catch (err) {
-                    return onError(err, res, useDebugError);
-                }
-            }
-            req._body = body !== undefined;
-            req.body = body || {};
-            next();
-        });
+            });
+        } else next();
     } else next();
 }
 
