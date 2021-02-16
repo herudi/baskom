@@ -1,6 +1,6 @@
 # Baskom js
 
-[![npm version](https://img.shields.io/badge/npm-0.2.2-blue.svg)](https://npmjs.org/package/baskom) 
+[![npm version](https://img.shields.io/badge/npm-0.2.4-blue.svg)](https://npmjs.org/package/baskom) 
 [![License](https://img.shields.io/:license-mit-blue.svg)](http://badges.mit-license.org)
 [![download-url](https://img.shields.io/npm/dm/baskom.svg)](https://npmjs.org/package/baskom)
 
@@ -70,6 +70,7 @@ res.status(201).send('Created');
 res.type('html').send('<h1>Home</h1>');
 // send file
 res.sendFile(__dirname + '/test.png');
+res.sendFile(pathfile, cache?);
 // download
 res.download(__dirname + '/test.txt');
 // redirect
@@ -78,6 +79,8 @@ res.redirect('/something');
 res.render('test', {
     name: 'yourname'
 });
+res.set('Content-Type', 'text/html');
+res.get('Content-Type');
 // and more
 ```
 
@@ -148,7 +151,7 @@ const app = baskom({
     useParseQueryString: qs.parse,  /* default native parse querystring node */
     useDebugError: true,            /* default false */
     useBodyLimit: '1mb',            /* default '1mb' */
-    useDefaultBody: true            /* default true (if using express body-parser please set to false) */
+    useDefaultBody: true,           /* default true (if using express body-parser please set to false) */
     useServerTimeout: 3000          /* number value timeout server */
 });
 ...
@@ -299,29 +302,26 @@ const baskom = require('baskom');
 
 const app = baskom();
 
+// simple
 app.use({ engine: 'ejs' });
-// or
-// app.use({ engine: 'handlebars', ext: '.hbs' });
-// or
-// app.use({ 
-//     engine: require('eta').renderFile, 
-//     ext: '.eta',
-//     set: {
-//         'view cache': true
-//     }
-// });
-// or custom
-// app.use({
-//     engine: 'dustjs-linkedin',
-//     ext: '.dust',
-//     render: (res, source, ...args) => {
-//         let file = fs.readFileSync(source, 'utf8');
-//         require('dustjs-linkedin').renderSource(file.toString(), ...args, (err, html) => {
-//             if (err) throw new Error('err render');
-//             res.type('text/html').send(html);
-//         });
-//     }
-// });
+// no cache
+app.use({ engine: 'ejs', cache: false });
+// using extension
+app.use({ engine: 'handlebars', ext: '.hbs' });
+// with express-react-views
+app.use({ engine: require('express-react-views').createEngine(), ext: '.jsx' });
+// or custom render
+app.use({
+    engine: 'dustjs-linkedin',
+    ext: '.dust',
+    render: (res, source, ...args) => {
+        let file = fs.readFileSync(source, 'utf8');
+        require('dustjs-linkedin').renderSource(file.toString(), ...args, (err, html) => {
+            if (err) throw new Error('err render');
+            res.type('text/html').send(html);
+        });
+    }
+});
 
 app.get('/hello', (req, res) => {
     res.render('hello', {
@@ -336,6 +336,16 @@ app.get('/redirect', (req, res) => {
 app.listen(3000, () => {
     console.log('Running ' + 3000);
 });
+```
+### Template Engine Role
+```js
+app.use({
+    engine: 'ejs',   /* engine module name  */
+    ext: '.ejs',     /* extension of engine template (optional). */
+    cache: false,    /* simple cache (default true) */
+    render: fn(),    /* custom render */
+    name: 'ejs',     /* if engine declare require('ejs'), name is required */
+})
 ```
 
 ## Using Simple Cluster

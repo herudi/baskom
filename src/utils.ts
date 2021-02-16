@@ -2,7 +2,9 @@ import { MIME_TYPES, OCTET_TYPE, JSON_TYPE, TEXT_PLAIN_TYPE, FORM_URLENCODED_TYP
 import { parse as parsequery } from 'querystring';
 import { Request, Response, NextFunction, TErrorResponse } from './types';
 import * as pathnode from 'path';
+import { CONTENT_LENGTH } from './constant';
 import * as fs from 'fs';
+import { createHash } from 'crypto';
 
 type TSizeList = {
     b: number;
@@ -25,7 +27,7 @@ type TMapEngine = {
 type TDefaultEngineParam = {
     name: string;
     engine: any;
-    header: { [key: string]: string | number | string[] };
+    cache?: boolean;
     settings: { [key: string]: any };
     options?: { [key: string]: any };
 }
@@ -87,34 +89,26 @@ export function findBase(pathname: string) {
 }
 
 export function getEngine(arg: any) {
+    if (arg.cache === void 0) arg.cache = true;
     let defaultDir = pathnode.join(pathnode.dirname((require as any).main.filename || (process as any).mainModule.filename), 'views'),
-        _ext = arg.ext,
-        _basedir = pathnode.resolve(arg.basedir || defaultDir),
-        _render = arg.render;
-    if (_render === void 0) {
-        let _engine = (typeof arg.engine === 'string' ? require(arg.engine) : arg.engine);
-        if (typeof _engine === 'object' && _engine.renderFile !== void 0) _engine = _engine.renderFile;
+        ext = arg.ext,
+        basedir = pathnode.resolve(arg.basedir || defaultDir),
+        render = arg.render;
+    if (render === void 0) {
+        let engine = (typeof arg.engine === 'string' ? require(arg.engine) : arg.engine);
+        if (typeof engine === 'object' && engine.renderFile !== void 0) engine = engine.renderFile;
         let _name = arg.name || (typeof arg.engine === 'string' ? arg.engine : 'html');
-        _ext = _ext || ('.' + _name);
-        if (_name === 'nunjucks') _engine.configure(_basedir, { autoescape: arg.autoescape || true });
-        _render = defaultRenderEngine({
-            engine: _engine,
+        ext = ext || ('.' + _name);
+        if (_name === 'nunjucks') engine.configure(basedir, { autoescape: arg.autoescape || true });
+        render = defaultRenderEngine({
+            engine,
             name: _name,
+            cache: arg.cache,
             options: arg.options,
-            header: arg.header || {
-                'Content-Type': 'text/html; charset=utf-8'
-            },
-            settings: {
-                views: _basedir,
-                ...(arg.set ? arg.set : {})
-            }
+            settings: { views: basedir }
         })
     }
-    return {
-        ext: _ext,
-        basedir: _basedir,
-        render: _render
-    };
+    return { ext, basedir, render };
 }
 
 export function modPath(prefix: string) {
@@ -295,16 +289,23 @@ export function defaultRenderEngine(obj: TDefaultEngineParam) {
         let result: any,
             engine = obj.engine,
             name = obj.name,
-            header = obj.header,
+            header: { [key: string]: any } = {},
             file = fs.readFileSync(source, 'utf8');
-        header['Content-Type'] = header['Content-Type'] || header[CONTENT_TYPE] || res.getHeader(CONTENT_TYPE) || res.getHeader('Content-Type') || 'text/html; charset=utf-8';
+        header[CONTENT_TYPE] = res.getHeader(CONTENT_TYPE) || 'text/html; charset=utf-8';
         if (obj.options) args.push(obj.options);
         if (!args.length) args.push({ settings: obj.settings });
         else Object.assign(args[0], { settings: obj.settings });
         if (typeof engine === 'function') {
             engine(source, ...args, (err: Error, out: string) => {
                 if (err) throw err;
-                res.writeHead(res.statusCode, header);
+                let code = res.statusCode;
+                header[CONTENT_LENGTH] = '' + Buffer.byteLength(out);
+                if (obj.cache === true) {
+                    let wobj = wrapCacheFile(res, source, out, header);
+                    header = wobj.header;
+                    code = wobj.code;
+                }
+                res.writeHead(code, header);
                 res.end(out);
             });
         } else {
@@ -330,11 +331,111 @@ export function defaultRenderEngine(obj: TDefaultEngineParam) {
             if (typeof result !== 'string') {
                 throw new Error('View engine not supported... please add custom render');
             }
-            res.writeHead(res.statusCode, header);
+            let code = res.statusCode;
+            header[CONTENT_LENGTH] = '' + Buffer.byteLength(result);
+            if (obj.cache === true) {
+                let wobj = wrapCacheFile(res, source, result, header);
+                header = wobj.header;
+                code = wobj.code;
+            }
+            res.writeHead(code, header);
             return res.send(result);
         }
 
     }
 
+}
+
+export function wrapCacheFile(res: Response, file: string, data: string, header: { [key: string]: any }) {
+    let isNotMod = false, code = res.statusCode;
+    if ((res as any).socket.parser && (res as any).socket.parser.incoming) {
+        let { headers } = (res as any).socket.parser.incoming;
+        let { mtime } = fs.statSync(file);
+        mtime.setMilliseconds(0);
+        const mtimeutc = mtime.toUTCString();
+        let chash = createHash('sha1')
+            .update(data)
+            .digest('base64')
+            .substring(0, 27);
+        header['ETag'] = `W/"${header[CONTENT_LENGTH].toString(16)}-${chash}"`;
+        header['Last-Modified'] = mtimeutc;
+        isNotMod = fresh(headers,
+            {
+                "etag": header['ETag'],
+                "last-modified": header['Last-Modified'],
+            }
+        );
+    }
+    if (isNotMod) {
+        res.removeHeader(CONTENT_TYPE);
+        res.removeHeader(CONTENT_LENGTH);
+        delete header[CONTENT_LENGTH];
+        delete header[CONTENT_TYPE];
+        code = 304;
+    }
+    return { header, code };
+}
+
+
+// this function from https://github.com/jshttp/fresh/blob/master/index.js
+/*!
+ * fresh
+ * Copyright(c) 2012 TJ Holowaychuk
+ * Copyright(c) 2016-2017 Douglas Christopher Wilson
+ * MIT Licensed
+ */
+
+function fresh(reqHeaders: { [key: string]: any }, resHeaders: { [key: string]: any }) {
+    const modifiedSince = reqHeaders['if-modified-since'];
+    const noneMatch = reqHeaders['if-none-match'];
+    if (!modifiedSince && !noneMatch) return false;
+    let cacheControl = reqHeaders['cache-control'];
+    if (cacheControl && CACHE_CONTROL_NO_CACHE_REGEXP.test(cacheControl)) return false;
+    if (noneMatch && noneMatch !== '*') {
+        let etag = resHeaders['etag'];
+        if (!etag) return false;
+        let etagStale = true;
+        let matches = parseTokenList(noneMatch);
+        for (let i = 0; i < matches.length; i++) {
+            let match = matches[i];
+            if (match === etag || match === 'W/' + etag || 'W/' + match === etag) {
+                etagStale = false;
+                break;
+            }
+        }
+        if (etagStale) return false;
+    }
+    if (modifiedSince) {
+        const lastModified = resHeaders['last-modified'];
+        if (!lastModified || !(parseHttpDate(lastModified) <= parseHttpDate(modifiedSince))) {
+            return false;
+        }
+    }
+    return true
+}
+
+const CACHE_CONTROL_NO_CACHE_REGEXP = /(?:^|,)\s*?no-cache\s*?(?:,|$)/;
+const parseHttpDate = Date.parse;
+
+function parseTokenList(str: string) {
+    let end = 0, list = [], start = 0;
+    for (let i = 0, len = str.length; i < len; i++) {
+        switch (str.charCodeAt(i)) {
+            case 0x20: /*   */
+                if (start === end) {
+                    start = end = i + 1
+                }
+                break
+            case 0x2c: /* , */
+                list.push(str.substring(start, end))
+                start = end = i + 1
+                break
+            default:
+                end = i + 1
+                break
+        }
+    }
+    list.push(str.substring(start, end));
+    return list;
 }
 

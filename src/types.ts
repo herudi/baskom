@@ -30,7 +30,7 @@ export interface Response extends ServerResponse {
     render(pathfile: string, param: any): void;
     render(pathfile: string, ...args: any): void;
     redirect(path: string): void;
-    sendFile(filepath: string): void;
+    sendFile(filepath: string, cache?: boolean): void;
     download(filepath: string): void;
     set(name: any, value?: string | number | string[] | number[]): this;
     header(name: any, value?: string | number | string[] | number[]): this;
