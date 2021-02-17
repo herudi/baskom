@@ -1,6 +1,6 @@
 # Baskom js
 
-[![npm version](https://img.shields.io/badge/npm-0.2.4-blue.svg)](https://npmjs.org/package/baskom) 
+[![npm version](https://img.shields.io/badge/npm-0.2.5-blue.svg)](https://npmjs.org/package/baskom) 
 [![License](https://img.shields.io/:license-mit-blue.svg)](http://badges.mit-license.org)
 [![download-url](https://img.shields.io/npm/dm/baskom.svg)](https://npmjs.org/package/baskom)
 
@@ -78,6 +78,10 @@ res.redirect('/something');
 // render view engine
 res.render('test', {
     name: 'yourname'
+});
+res.header({
+    'Content-Type': 'text/html',
+    'More': 'more'
 });
 res.set('Content-Type', 'text/html');
 res.get('Content-Type');

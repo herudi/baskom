@@ -390,52 +390,38 @@ function fresh(reqHeaders: { [key: string]: any }, resHeaders: { [key: string]: 
     const noneMatch = reqHeaders['if-none-match'];
     if (!modifiedSince && !noneMatch) return false;
     let cacheControl = reqHeaders['cache-control'];
-    if (cacheControl && CACHE_CONTROL_NO_CACHE_REGEXP.test(cacheControl)) return false;
-    if (noneMatch && noneMatch !== '*') {
+    if (cacheControl && /(?:^|,)\s*?no-cache\s*?(?:,|$)/.test(cacheControl)) return false;
+    if (noneMatch && noneMatch !== "*") {
         let etag = resHeaders['etag'];
-        if (!etag) return false;
-        let etagStale = true;
-        let matches = parseTokenList(noneMatch);
-        for (let i = 0; i < matches.length; i++) {
-            let match = matches[i];
-            if (match === etag || match === 'W/' + etag || 'W/' + match === etag) {
-                etagStale = false;
-                break;
-            }
-        }
-        if (etagStale) return false;
+        if (!etag || checkNoMatch(etag, noneMatch)) return false;
     }
     if (modifiedSince) {
         const lastModified = resHeaders['last-modified'];
-        if (!lastModified || !(parseHttpDate(lastModified) <= parseHttpDate(modifiedSince))) {
-            return false;
-        }
+        if (!lastModified || !(Date.parse(lastModified) <= Date.parse(modifiedSince))) return false;
     }
     return true
 }
 
-const CACHE_CONTROL_NO_CACHE_REGEXP = /(?:^|,)\s*?no-cache\s*?(?:,|$)/;
-const parseHttpDate = Date.parse;
-
-function parseTokenList(str: string) {
-    let end = 0, list = [], start = 0;
-    for (let i = 0, len = str.length; i < len; i++) {
-        switch (str.charCodeAt(i)) {
-            case 0x20: /*   */
-                if (start === end) {
-                    start = end = i + 1
-                }
-                break
-            case 0x2c: /* , */
-                list.push(str.substring(start, end))
-                start = end = i + 1
-                break
+function checkNoMatch(etag: string, noneMatch: string) {
+    let start = 0, end = 0, i = 0, len = noneMatch.length;
+    for (; i < len; i++) {
+        switch (noneMatch.charCodeAt(i)) {
+            case 0x20 /*   */:
+                if (start === end) start = end = i + 1;
+                break;
+            case 0x2c /* , */:
+                if (isEtags(etag, noneMatch.substring(start, end))) return false;
+                start = end = i + 1;
+                break;
             default:
-                end = i + 1
-                break
+                end = i + 1;
+                break;
         }
     }
-    list.push(str.substring(start, end));
-    return list;
+    if (isEtags(etag, noneMatch.substring(start, end))) return false;
+    return true;
 }
 
+function isEtags(etag: string, val: string) {
+    return val === etag || val === `W/${etag}` || `W/${val}` === etag;
+}
