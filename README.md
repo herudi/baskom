@@ -344,11 +344,12 @@ app.listen(3000, () => {
 ### Template Engine Role
 ```js
 app.use({
-    engine: 'ejs',   /* engine module name  */
-    ext: '.ejs',     /* extension of engine template (optional). */
-    cache: false,    /* simple cache (default true) */
-    render: fn(),    /* custom render */
-    name: 'ejs',     /* if engine declare require('ejs'), name is required */
+    engine: 'ejs',    /* engine module name  */
+    ext: '.ejs',      /* extension of engine template (optional). */
+    cache: false,     /* simple cache (default true) */
+    render: fn(),     /* custom render */
+    basedir: 'views', /* default in folder views */
+    name: 'ejs',      /* if engine declare require('ejs'), name is required */
 })
 ```
 
