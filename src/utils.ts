@@ -121,7 +121,7 @@ export function modPath(prefix: string) {
 
 export function toPathx(path: string | RegExp, isAll: boolean) {
     if (path instanceof RegExp) return { params: null, pathx: path };
-    let trgx = /\?|\*|\./g;
+    let trgx = /\?|\*|\./;
     if (!trgx.test(path) && isAll === false) {
         let len = (path.match(/\/:/gi) || []).length;
         if (len === 0) return;
@@ -132,7 +132,8 @@ export function toPathx(path: string | RegExp, isAll: boolean) {
     };
     let params: any[] | string | null = [], pattern = '', strReg = '/([^/]+?)', strRegQ = '(?:/([^/]+?))?';
     if (trgx.test(path)) {
-        let arr = path.split('/'), obj: string | any[], el: string, i = 0; arr.shift();
+        let arr = path.split('/'), obj: string | any[], el: string, i = 0;
+        arr[0] || arr.shift();
         for (; i < arr.length; i++) {
             obj = arr[i];
             el = obj[0];
