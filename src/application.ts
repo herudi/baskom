@@ -182,7 +182,7 @@ class Application extends Router {
 
     listen(port: number = 3000, ...args: any) {
         const server = this.server || http.createServer();
-        server.setTimeout(this.serverTimeout);
+        if (server.setTimeout) server.setTimeout(this.serverTimeout);
         server.on('request', (req: Request, res: Response) => {
             this.requestListener(req, res);
         });
