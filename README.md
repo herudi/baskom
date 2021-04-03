@@ -1,6 +1,6 @@
 # Baskom js
 
-[![npm version](https://img.shields.io/badge/npm-0.2.7-blue.svg)](https://npmjs.org/package/baskom) 
+[![npm version](https://img.shields.io/badge/npm-0.2.8-blue.svg)](https://npmjs.org/package/baskom) 
 [![License](https://img.shields.io/:license-mit-blue.svg)](http://badges.mit-license.org)
 [![download-url](https://img.shields.io/npm/dm/baskom.svg)](https://npmjs.org/package/baskom)
 
@@ -70,7 +70,7 @@ res.status(201).send('Created');
 res.type('html').send('<h1>Home</h1>');
 // send file
 res.sendFile(__dirname + '/test.png');
-res.sendFile(pathfile, cache?);
+res.sendFile(pathfile, etag?: boolean);
 // download
 res.download(__dirname + '/test.txt');
 // redirect
@@ -308,8 +308,8 @@ const app = baskom();
 
 // simple
 app.use({ engine: 'ejs' });
-// no cache
-app.use({ engine: 'ejs', cache: false });
+// no etag
+app.use({ engine: 'ejs', etag: false });
 // using extension
 app.use({ engine: 'handlebars', ext: '.hbs' });
 // with express-react-views
@@ -346,7 +346,7 @@ app.listen(3000, () => {
 app.use({
     engine: 'ejs',    /* engine module name  */
     ext: '.ejs',      /* extension of engine template (optional). */
-    cache: false,     /* simple cache (default true) */
+    etag: false,      /* simple etag (default true) */
     render: fn(),     /* custom render */
     basedir: 'views', /* default in folder views */
     name: 'ejs',      /* if engine declare require('ejs'), name is required */

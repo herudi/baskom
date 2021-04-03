@@ -27,7 +27,7 @@ type TMapEngine = {
 type TDefaultEngineParam = {
     name: string;
     engine: any;
-    cache?: boolean;
+    etag?: boolean;
     settings: { [key: string]: any };
     options?: { [key: string]: any };
 }
@@ -89,7 +89,7 @@ export function findBase(pathname: string) {
 }
 
 export function getEngine(arg: any) {
-    if (arg.cache === void 0) arg.cache = true;
+    if (arg.etag === void 0) arg.etag = true;
     let defaultDir = pathnode.join(pathnode.dirname((require as any).main.filename || (process as any).mainModule.filename), 'views'),
         ext = arg.ext,
         basedir = pathnode.resolve(arg.basedir || defaultDir),
@@ -103,7 +103,7 @@ export function getEngine(arg: any) {
         render = defaultRenderEngine({
             engine,
             name: _name,
-            cache: arg.cache,
+            etag: arg.etag,
             options: arg.options,
             settings: { views: basedir }
         })
@@ -300,11 +300,21 @@ export function defaultRenderEngine(obj: TDefaultEngineParam) {
             engine(source, ...args, (err: Error, out: string) => {
                 if (err) throw err;
                 let code = res.statusCode;
+                let { mtime } = fs.statSync(source);
+                header["Last-Modified"] = mtime.toUTCString();
                 header[CONTENT_LENGTH] = '' + Buffer.byteLength(out);
-                if (obj.cache === true) {
-                    let wobj = wrapCacheFile(res, source, out, header);
-                    header = wobj.header;
-                    code = wobj.code;
+                if (obj.etag === true) {
+                    header["ETag"] = simpleEtager(out);
+                    if (getReqHeaders(res)) {
+                        let reqHeaders = getReqHeaders(res);
+                        if (fresh(reqHeaders, {
+                            "etag": header["ETag"],
+                            "last-modified": header["Last-Modified"],
+                        })) {
+                            res.code(304).end();
+                            return;
+                        }
+                    }
                 }
                 res.writeHead(code, header);
                 res.end(out);
@@ -333,11 +343,21 @@ export function defaultRenderEngine(obj: TDefaultEngineParam) {
                 throw new Error('View engine not supported... please add custom render');
             }
             let code = res.statusCode;
+            let { mtime } = fs.statSync(source);
             header[CONTENT_LENGTH] = '' + Buffer.byteLength(result);
-            if (obj.cache === true) {
-                let wobj = wrapCacheFile(res, source, result, header);
-                header = wobj.header;
-                code = wobj.code;
+            header["Last-Modified"] = mtime.toUTCString();
+            if (obj.etag === true) {
+                header["ETag"] = simpleEtager(result);
+                if (getReqHeaders(res)) {
+                    let reqHeaders = getReqHeaders(res);
+                    if (fresh(reqHeaders, {
+                        "etag": header["ETag"],
+                        "last-modified": header["Last-Modified"],
+                    })) {
+                        res.code(304).end();
+                        return;
+                    }
+                }
             }
             res.writeHead(code, header);
             return res.send(result);
@@ -347,36 +367,22 @@ export function defaultRenderEngine(obj: TDefaultEngineParam) {
 
 }
 
-export function wrapCacheFile(res: Response, file: string, data: string, header: { [key: string]: any }) {
-    let isNotMod = false, code = res.statusCode;
-    if ((res as any).socket.parser && (res as any).socket.parser.incoming) {
-        let { headers } = (res as any).socket.parser.incoming;
-        let { mtime } = fs.statSync(file);
-        mtime.setMilliseconds(0);
-        const mtimeutc = mtime.toUTCString();
-        let chash = createHash('sha1')
-            .update(data)
-            .digest('base64')
-            .substring(0, 27);
-        header['ETag'] = `W/"${header[CONTENT_LENGTH].toString(16)}-${chash}"`;
-        header['Last-Modified'] = mtimeutc;
-        isNotMod = fresh(headers,
-            {
-                "etag": header['ETag'],
-                "last-modified": header['Last-Modified'],
-            }
-        );
-    }
-    if (isNotMod) {
-        res.removeHeader(CONTENT_TYPE);
-        res.removeHeader(CONTENT_LENGTH);
-        delete header[CONTENT_LENGTH];
-        delete header[CONTENT_TYPE];
-        code = 304;
-    }
-    return { header, code };
+export function simpleEtager(data: any) {
+    let hash = createHash('sha1')
+        .update(data)
+        .digest('base64')
+        .substring(0, 27);
+    const blen = Buffer.byteLength(data);
+    return `W/"${blen.toString(16)}-${hash}"`;
 }
 
+export function getReqHeaders(res: Response){
+    if ((res as any).socket.parser && (res as any).socket.parser.incoming) {
+        let { headers } = (res as any).socket.parser.incoming;
+        return headers;
+    }
+    return undefined;
+}
 
 // this function from https://github.com/jshttp/fresh/blob/master/index.js
 /*!
@@ -386,7 +392,7 @@ export function wrapCacheFile(res: Response, file: string, data: string, header:
  * MIT Licensed
  */
 
-function fresh(reqHeaders: { [key: string]: any }, resHeaders: { [key: string]: any }) {
+export function fresh(reqHeaders: { [key: string]: any }, resHeaders: { [key: string]: any }) {
     const modifiedSince = reqHeaders['if-modified-since'];
     const noneMatch = reqHeaders['if-none-match'];
     if (!modifiedSince && !noneMatch) return false;

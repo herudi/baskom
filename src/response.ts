@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import { STATUS_CODES } from "http";
 import { OCTET_TYPE, CONTENT_LENGTH, CONTENT_TYPE, JSON_TYPE, CHARSET, MIME_TYPES } from "./constant";
 import { Response } from './types';
-import { getMimeType, wrapCacheFile } from './utils';
+import { fresh, getMimeType, getReqHeaders, simpleEtager } from './utils';
 
 function _send(res: Response, data: string, contentType: string) {
     if (res._header) {
@@ -59,17 +59,24 @@ function response(res: Response, engine: any) {
         else if (typeof data === 'object') this.json(data);
         else res.end(data || STATUS_CODES[this.statusCode]);
     };
-    res.sendFile = function (filepath: string, cache: boolean = true) {
+    res.sendFile = function (filepath: string, etag: boolean = true) {
         let header: { [key: string]: any } = {}, code = this.statusCode;
         let stat = fs.statSync(filepath);
         header[CONTENT_TYPE] = this.getHeader(CONTENT_TYPE) || getMimeType(filepath);
         header[CONTENT_LENGTH] = stat.size;
-        header['Accept-Ranges'] = this.getHeader('Accept-Ranges') || 'bytes';
-        if (cache === true) {
-            header['Cache-Control'] = this.getHeader('Cache-Control') || 'public, max-age=0';
-            let obj = wrapCacheFile(this, filepath, (filepath + stat.size.toString(16)), header);
-            header = obj.header;
-            code = obj.code;
+        header["Last-Modified"] = stat.mtime.toUTCString();
+        if (etag === true) {
+            header["ETag"] = simpleEtager(filepath);
+            if (getReqHeaders(res)) {
+                let reqHeaders = getReqHeaders(res);
+                if (fresh(reqHeaders, {
+                    "etag": header["ETag"],
+                    "last-modified": header["Last-Modified"],
+                })) {
+                    this.code(304).end();
+                    return;
+                }
+            }
         }
         let fStream = fs.createReadStream(filepath);
         this.writeHead(code, header);
