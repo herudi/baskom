@@ -4,7 +4,6 @@ import { Request, Response, NextFunction, TErrorResponse } from './types';
 import * as pathnode from 'path';
 import { CONTENT_LENGTH } from './constant';
 import * as fs from 'fs';
-import { createHash } from 'crypto';
 
 type TSizeList = {
     b: number;
@@ -144,7 +143,13 @@ export function toPathx(path: string | RegExp, isAll: boolean) {
                 let isQuest = obj.indexOf('?') !== -1, isExt = obj.indexOf('.') !== -1;
                 if (isQuest && !isExt) pattern += strRegQ;
                 else pattern += strReg;
-                if (isExt) pattern += (isQuest ? '?' : '') + '\\' + obj.substring(obj.indexOf('.'));
+                // if (isExt) pattern += (isQuest ? '?' : '') + '\\' + obj.substring(obj.indexOf('.'));
+                if (isExt) {
+                    let _ext = obj.substring(obj.indexOf('.'));
+                    let _pattern = pattern + (isQuest ? '?' : '') + '\\' + _ext;
+                    _pattern = _pattern.replace(strReg + '\\' + _ext, '/([\\w-]+' + _ext + ")");
+                    pattern = _pattern;
+                }
             } else pattern += '/' + obj;
         };
     } else pattern = path.replace(/\/:[a-z_-]+/gi, strReg);
@@ -300,17 +305,14 @@ export function defaultRenderEngine(obj: TDefaultEngineParam) {
             engine(source, ...args, (err: Error, out: string) => {
                 if (err) throw err;
                 let code = res.statusCode;
-                let { mtime } = fs.statSync(source);
+                let { mtime, size } = fs.statSync(source);
                 header["Last-Modified"] = mtime.toUTCString();
                 header[CONTENT_LENGTH] = '' + Buffer.byteLength(out);
                 if (obj.etag === true) {
-                    header["ETag"] = simpleEtager(out);
+                    header["ETag"] = `W/"${size}-${mtime.getTime()}"`;
                     if (getReqHeaders(res)) {
                         let reqHeaders = getReqHeaders(res);
-                        if (fresh(reqHeaders, {
-                            "etag": header["ETag"],
-                            "last-modified": header["Last-Modified"],
-                        })) {
+                        if (reqHeaders['if-none-match'] === header["ETag"]) {
                             res.code(304).end();
                             return;
                         }
@@ -343,17 +345,14 @@ export function defaultRenderEngine(obj: TDefaultEngineParam) {
                 throw new Error('View engine not supported... please add custom render');
             }
             let code = res.statusCode;
-            let { mtime } = fs.statSync(source);
+            let { mtime, size } = fs.statSync(source);
             header[CONTENT_LENGTH] = '' + Buffer.byteLength(result);
             header["Last-Modified"] = mtime.toUTCString();
             if (obj.etag === true) {
-                header["ETag"] = simpleEtager(result);
+                header["ETag"] = `W/"${size}-${mtime.getTime()}"`;
                 if (getReqHeaders(res)) {
                     let reqHeaders = getReqHeaders(res);
-                    if (fresh(reqHeaders, {
-                        "etag": header["ETag"],
-                        "last-modified": header["Last-Modified"],
-                    })) {
+                    if (reqHeaders['if-none-match'] === header["ETag"]) {
                         res.code(304).end();
                         return;
                     }
@@ -367,68 +366,10 @@ export function defaultRenderEngine(obj: TDefaultEngineParam) {
 
 }
 
-export function simpleEtager(data: any) {
-    let hash = createHash('sha1')
-        .update(data)
-        .digest('base64')
-        .substring(0, 27);
-    const blen = Buffer.byteLength(data);
-    return `W/"${blen.toString(16)}-${hash}"`;
-}
-
 export function getReqHeaders(res: Response){
     if ((res as any).socket.parser && (res as any).socket.parser.incoming) {
         let { headers } = (res as any).socket.parser.incoming;
         return headers;
     }
     return undefined;
-}
-
-// this function from https://github.com/jshttp/fresh/blob/master/index.js
-/*!
- * fresh
- * Copyright(c) 2012 TJ Holowaychuk
- * Copyright(c) 2016-2017 Douglas Christopher Wilson
- * MIT Licensed
- */
-
-export function fresh(reqHeaders: { [key: string]: any }, resHeaders: { [key: string]: any }) {
-    const modifiedSince = reqHeaders['if-modified-since'];
-    const noneMatch = reqHeaders['if-none-match'];
-    if (!modifiedSince && !noneMatch) return false;
-    let cacheControl = reqHeaders['cache-control'];
-    if (cacheControl && /(?:^|,)\s*?no-cache\s*?(?:,|$)/.test(cacheControl)) return false;
-    if (noneMatch && noneMatch !== "*") {
-        let etag = resHeaders['etag'];
-        if (!etag || checkNoMatch(etag, noneMatch)) return false;
-    }
-    if (modifiedSince) {
-        const lastModified = resHeaders['last-modified'];
-        if (!lastModified || !(Date.parse(lastModified) <= Date.parse(modifiedSince))) return false;
-    }
-    return true
-}
-
-function checkNoMatch(etag: string, noneMatch: string) {
-    let start = 0, end = 0, i = 0, len = noneMatch.length;
-    for (; i < len; i++) {
-        switch (noneMatch.charCodeAt(i)) {
-            case 0x20 /*   */:
-                if (start === end) start = end = i + 1;
-                break;
-            case 0x2c /* , */:
-                if (isEtags(etag, noneMatch.substring(start, end))) return false;
-                start = end = i + 1;
-                break;
-            default:
-                end = i + 1;
-                break;
-        }
-    }
-    if (isEtags(etag, noneMatch.substring(start, end))) return false;
-    return true;
-}
-
-function isEtags(etag: string, val: string) {
-    return val === etag || val === `W/${etag}` || `W/${val}` === etag;
 }

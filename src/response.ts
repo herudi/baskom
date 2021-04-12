@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import { STATUS_CODES } from "http";
 import { OCTET_TYPE, CONTENT_LENGTH, CONTENT_TYPE, JSON_TYPE, CHARSET, MIME_TYPES } from "./constant";
 import { Response } from './types';
-import { fresh, getMimeType, getReqHeaders, simpleEtager } from './utils';
+import { getMimeType, getReqHeaders } from './utils';
 
 function _send(res: Response, data: string, contentType: string) {
     if (res._header) {
@@ -61,19 +61,16 @@ function response(res: Response, engine: any) {
     };
     res.sendFile = function (filepath: string, etag: boolean = true) {
         let header: { [key: string]: any } = {}, code = this.statusCode;
-        let stat = fs.statSync(filepath);
+        let {size,mtime} = fs.statSync(filepath);
         header[CONTENT_TYPE] = this.getHeader(CONTENT_TYPE) || getMimeType(filepath);
-        header[CONTENT_LENGTH] = stat.size;
-        header["Last-Modified"] = stat.mtime.toUTCString();
+        header[CONTENT_LENGTH] = size;
+        header["Last-Modified"] = mtime.toUTCString();
         if (etag === true) {
-            header["ETag"] = simpleEtager(filepath);
+            header["ETag"] = `W/"${size}-${mtime.getTime()}"`;
             if (getReqHeaders(res)) {
                 let reqHeaders = getReqHeaders(res);
-                if (fresh(reqHeaders, {
-                    "etag": header["ETag"],
-                    "last-modified": header["Last-Modified"],
-                })) {
-                    this.code(304).end();
+                if (reqHeaders['if-none-match'] === header["ETag"]) {
+                    res.code(304).end();
                     return;
                 }
             }
