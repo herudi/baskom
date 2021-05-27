@@ -1,38 +1,41 @@
 import { NextFunction, Request, Response, THandler } from "./types";
 import { findBase } from "./utils";
 
-function addMidd(url: string, midds: any[], nf: (req: Request, res: Response, next: NextFunction) => void, fns: any[], midAsset?: any) {
-    if (midAsset !== void 0) {
-        let pfx = findBase(url);
-        if (midAsset[pfx]) fns = midAsset[pfx].concat(fns);
-    }
-    if (midds.length) fns = midds.concat(fns);
-    return (fns = fns.concat([nf]));
-}
-
 export default class Router {
-    routes: any;
-    c_routes: any[];
-    midds: any[];
-    pmidds: { [key: string]: any[] };
-    constructor() {
-        this.routes = {};
-        this.c_routes = [];
-        this.midds = [];
-        this.pmidds = {};
-    }
+    routes: Record<string, any> = {};
+    c_routes: Record<string, any>[] = [];
+    midds: THandler[] = [];
+    pmidds: Record<string, any> = {};
 
+    #addMidd = (
+        url: string,
+        midds: any[],
+        nf: (req: Request, res: Response, next: NextFunction) => void,
+        fns: any[],
+        midAsset?: any
+    ) => {
+        if (midAsset !== void 0) {
+            let pfx = findBase(url);
+            if (midAsset[pfx]) fns = midAsset[pfx].concat(fns);
+        }
+        if (midds.length) fns = midds.concat(fns);
+        return (fns = fns.concat([nf]));
+    }
     call(method: string, path: string, ...handlers: Array<THandler | THandler[]>) {
         this.c_routes.push({ method, path, handlers });
         return this;
     }
-    getRoute(method: string, url: string, notFound: (req: Request, res: Response, next: NextFunction) => void) {
+    getRoute(
+        method: string,
+        url: string,
+        notFound: (req: Request, res: Response, next: NextFunction) => void
+    ) {
         let params: { [key: string]: any } = {}, handlers: any[] = [];
         if (this.routes[method + url]) {
             let obj = this.routes[method + url];
             if (obj.m) handlers = obj.handlers;
             else {
-                handlers = addMidd(url, this.midds, notFound, obj.handlers);
+                handlers = this.#addMidd(url, this.midds, notFound, obj.handlers);
                 this.routes[method + url] = { m: true, handlers };
             }
         } else {
@@ -48,7 +51,7 @@ export default class Router {
                 params[obj.params] = url.substring(url.lastIndexOf('/') + 1);
                 if (obj.m) handlers = obj.handlers;
                 else {
-                    handlers = addMidd(url, this.midds, notFound, obj.handlers);
+                    handlers = this.#addMidd(url, this.midds, notFound, obj.handlers);
                     this.routes[method + key + '/:p'] = { m: true, params: obj.params, handlers };
                 }
             }
@@ -61,13 +64,7 @@ export default class Router {
                         obj = routes[i];
                         if (obj.pathx && obj.pathx.test(url)) {
                             nf = false;
-                            if (obj.m) handlers = obj.handlers;
-                            else {
-                                handlers = addMidd(url, this.midds, notFound, obj.handlers);
-                                if (this.routes[method] && this.routes[method][i]) {
-                                    this.routes[method][i] = { m: true, params: obj.params, handlers, pathx: obj.pathx };
-                                }
-                            }
+                            handlers = this.#addMidd(url, this.midds, notFound, obj.handlers, this.pmidds);
                             if (obj.params) {
                                 matches = obj.pathx.exec(url);
                                 while (j < obj.params.length) params[obj.params[j]] = matches[++j] || null;
@@ -78,7 +75,7 @@ export default class Router {
                         i++;
                     }
                 }
-                if (nf) handlers = addMidd(url, this.midds, notFound, [], this.pmidds);
+                if (nf) handlers = this.#addMidd(url, this.midds, notFound, [], this.pmidds);
             }
         }
         return { params, handlers };
