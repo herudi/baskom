@@ -1,9 +1,12 @@
-import { MIME_TYPES, OCTET_TYPE, JSON_TYPE, TEXT_PLAIN_TYPE, FORM_URLENCODED_TYPE, CONTENT_TYPE } from './constant';
-import { parse as parsequery } from 'querystring';
-import { Request, Response, NextFunction, TErrorResponse } from './types';
+import { MIME_TYPES, OCTET_TYPE, JSON_TYPE, TEXT_PLAIN_TYPE, FORM_URLENCODED_TYPE, CONTENT_TYPE, SERIALIZE_COOKIE_REGEXP } from './constant';
+import { NextFunction, TErrorResponse, Cookie, HttpResponse, HttpRequest } from './types';
 import * as pathnode from 'path';
 import { CONTENT_LENGTH } from './constant';
 import * as fs from 'fs';
+import * as _util from 'util';
+
+const encoder = new _util.TextEncoder();
+const decoder = new _util.TextDecoder();
 
 type TSizeList = {
     b: number;
@@ -44,12 +47,7 @@ export function getParamNames(func: Function) {
     return result;
 }
 
-function onError(err: any, res: Response, useDebugError: boolean) {
-    let obj: any = getError(err, useDebugError);
-    return res.code(obj.statusCode).json(obj);
-}
-
-export function getError(err: any, useDebugError: boolean = false, req?: Request): TErrorResponse {
+export function getError(err: any, useDebugError: boolean = false, req?: HttpRequest): TErrorResponse {
     let code = err.code || err.status || err.statusCode || 500;
     if (typeof code !== "number") code = 500;
     let debug: { [key: string]: any } | undefined;
@@ -75,10 +73,6 @@ export function getError(err: any, useDebugError: boolean = false, req?: Request
         message: err.message || 'Something went wrong',
         debug
     };
-}
-
-export function generalError(useDebugError = false) {
-    return (err: any, req: Request, res: Response, next: NextFunction) => onError(err, res, useDebugError);
 }
 
 export function findBase(pathname: string) {
@@ -111,7 +105,7 @@ export function getEngine(arg: any) {
 }
 
 export function modPath(prefix: string) {
-    return function (req: Request, res: Response, next: NextFunction) {
+    return function (req: HttpRequest, res: HttpResponse, next: NextFunction) {
         req.url = (req.url as string).substring(prefix.length) || '/';
         req.path = req.path ? req.path.substring(prefix.length) || '/' : '/';
         next();
@@ -162,58 +156,15 @@ export function toPathx(path: string | RegExp, isAll: boolean) {
     return { params, pathx };
 }
 
-export function parseurl(req: Request) {
-    let str: any = req.url, url = req._parsedUrl;
-    if (url && url._raw === str) return url;
-    let pathname = str, query = null, search = null, i = 0, len = str.length;
-    while (i < len) {
-        if (str.charCodeAt(i) === 0x3f) {
-            pathname = str.substring(0, i);
-            query = str.substring(i + 1);
-            search = str.substring(i);
-            break;
-        }
-        i++;
-    }
-    url = {};
-    url.path = url._raw = url.href = str;
-    url.pathname = pathname;
-    url.query = query;
-    url.search = search;
-    return (req._parsedUrl = url);
-}
-
-export async function sendPromise(handler: any, res: Response, next: NextFunction, isWrapError: boolean = false) {
-    try {
-        let ret = await handler;
-        if (!ret) return;
-        res.send(ret);
-    } catch (err) {
-        if (isWrapError) onError(err, res, true);
-        else next(err);
-    }
-}
-
-export function wrapError(handler: any) {
-    return function (err: Error, req: Request, res: Response, next: NextFunction) {
-        let ret: Promise<any>;
-        try {
-            ret = handler(err, req, res, next);
-        } catch (err) {
-            onError(err, res, true);
-            return;
-        }
-        if (ret) {
-            if (typeof ret.then === 'function') return sendPromise(ret, res, next, true);
-            res.send(ret);
-        };
-    };
-};
-
-export function finalHandler(req: Request, res: Response, limit: number | string, qs_parse: any, useDebugError: boolean, defaultBody: boolean, next: (err?: any) => void) {
+export function finalHandler(
+    req: HttpRequest,
+    next: NextFunction,
+    limit: number | string,
+    qs_parse: any,
+    defaultBody: boolean
+) {
     if (defaultBody === false) {
-        next();
-        return;
+        return next();
     };
     let method = req.method;
     if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
@@ -231,19 +182,19 @@ export function finalHandler(req: Request, res: Response, limit: number | string
                     error = err;
                 }
             }).on('end', () => {
-                if (error) return onError(error, res, useDebugError);
+                if (error) return next(error);
                 if (!chunks.length) {
                     next();
                     return;
                 }
-                let urlencode_parse = qs_parse || parsequery,
+                let urlencode_parse = qs_parse || parseQuery,
                     str = Buffer.concat(chunks).toString(),
                     body = undefined;
                 if (isTypeBodyPassed(header, JSON_TYPE)) {
                     try {
                         body = JSON.parse(str);
                     } catch (err) {
-                        return onError(err, res, useDebugError);
+                        return next(err);
                     }
                 }
                 else if (isTypeBodyPassed(header, TEXT_PLAIN_TYPE)) body = str;
@@ -251,7 +202,7 @@ export function finalHandler(req: Request, res: Response, limit: number | string
                     try {
                         body = urlencode_parse(str);
                     } catch (err) {
-                        return onError(err, res, useDebugError);
+                        return next(err);
                     }
                 }
                 req._body = body !== undefined;
@@ -291,7 +242,7 @@ const mapEngine: TMapEngine = {
 }
 
 export function defaultRenderEngine(obj: TDefaultEngineParam) {
-    return function (res: Response, source: string, ...args: any) {
+    return function (res: HttpResponse, source: string, ...args: any) {
         let result: any,
             engine = obj.engine,
             name = obj.name,
@@ -304,7 +255,6 @@ export function defaultRenderEngine(obj: TDefaultEngineParam) {
         if (typeof engine === 'function') {
             engine(source, ...args, (err: Error, out: string) => {
                 if (err) throw err;
-                let code = res.statusCode;
                 let { mtime, size } = fs.statSync(source);
                 header["Last-Modified"] = mtime.toUTCString();
                 header[CONTENT_LENGTH] = '' + Buffer.byteLength(out);
@@ -318,8 +268,7 @@ export function defaultRenderEngine(obj: TDefaultEngineParam) {
                         }
                     }
                 }
-                res.writeHead(code, header);
-                res.end(out);
+                res.set(header).end(out);
             });
         } else {
             const renderOrCompile = (type: string) => {
@@ -344,7 +293,6 @@ export function defaultRenderEngine(obj: TDefaultEngineParam) {
             if (typeof result !== 'string') {
                 throw new Error('View engine not supported... please add custom render');
             }
-            let code = res.statusCode;
             let { mtime, size } = fs.statSync(source);
             header[CONTENT_LENGTH] = '' + Buffer.byteLength(result);
             header["Last-Modified"] = mtime.toUTCString();
@@ -358,18 +306,153 @@ export function defaultRenderEngine(obj: TDefaultEngineParam) {
                     }
                 }
             }
-            res.writeHead(code, header);
-            return res.send(result);
+            return res.set(header).send(result);
         }
 
     }
 
 }
 
-export function getReqHeaders(res: Response){
+export function getReqHeaders(res: HttpResponse) {
     if ((res as any).socket.parser && (res as any).socket.parser.incoming) {
         let { headers } = (res as any).socket.parser.incoming;
         return headers;
     }
-    return undefined;
+    return void 0;
+}
+
+export function serializeCookie(
+    name: string,
+    value: string,
+    cookie: Cookie = {},
+) {
+    if (!SERIALIZE_COOKIE_REGEXP.test(name)) {
+        throw new TypeError("name is invalid");
+    }
+    if (value !== "" && !SERIALIZE_COOKIE_REGEXP.test(value)) {
+        throw new TypeError("value is invalid");
+    }
+    cookie.encode = !!cookie.encode;
+    if (cookie.encode) {
+        let enc = encoder.encode(value);
+        value = Buffer.from(enc.toString()).toString('base64');
+    }
+    let ret = `${name}=${value}`;
+
+    if (name.startsWith("__Secure")) {
+        cookie.secure = true;
+    }
+    if (name.startsWith("__Host")) {
+        cookie.path = "/";
+        cookie.secure = true;
+        delete cookie.domain;
+    }
+    if (cookie.secure) {
+        ret += `; Secure`;
+    }
+    if (cookie.httpOnly) {
+        ret += `; HttpOnly`;
+    }
+    if (typeof cookie.maxAge === "number" && Number.isInteger(cookie.maxAge)) {
+        ret += `; Max-Age=${cookie.maxAge}`;
+    }
+    if (cookie.domain) {
+        if (!SERIALIZE_COOKIE_REGEXP.test(cookie.domain)) {
+            throw new TypeError("domain is invalid");
+        }
+        ret += `; Domain=${cookie.domain}`;
+    }
+    if (cookie.sameSite) {
+        ret += `; SameSite=${cookie.sameSite}`;
+    }
+    if (cookie.path) {
+        if (!SERIALIZE_COOKIE_REGEXP.test(cookie.path)) {
+            throw new TypeError("path is invalid");
+        }
+        ret += `; Path=${cookie.path}`;
+    }
+    if (cookie.expires) {
+        if (typeof cookie.expires.toUTCString !== "function") {
+            throw new TypeError("expires is invalid");
+        }
+        ret += `; Expires=${cookie.expires.toUTCString()}`;
+    }
+    if (cookie.other) {
+        ret += `; ${cookie.other.join("; ")}`;
+    }
+    return ret;
+}
+
+function tryDecode(str: string) {
+    try {
+        const dec = Buffer.from(str, 'base64').toString('ascii');
+        const uin = Uint8Array.from(dec.split(',') as any);
+        return decoder.decode(uin) || str;
+    } catch (error) {
+        return str;
+    }
+}
+
+export function getReqCookies(req: HttpRequest, decode?: boolean, i = 0) {
+    const str = req.headers['cookie'];
+    if (!str) return {};
+    const ret = {} as Record<string, string>;
+    const arr = str.split(";");
+    const len = arr.length;
+    while (i < len) {
+        const [key, ...oriVal] = arr[i].split("=");
+        let val = oriVal.join("=");
+        ret[key.trim()] = decode ? tryDecode(val) : val;
+        i++;
+    }
+    return ret;
+}
+
+function needPatch(data: any, keys: any, value: any) {
+    if (keys.length === 0) {
+        return value;
+    }
+    let key = keys.shift();
+    if (!key) {
+        data = data || [];
+        if (Array.isArray(data)) {
+            key = data.length;
+        }
+    }
+    let index = +key;
+    if (!isNaN(index)) {
+        data = data || [];
+        key = index;
+    }
+    data = data || {};
+    let val = needPatch(data[key], keys, value);
+    data[key] = val;
+    return data;
+}
+
+function myParse(arr: any[]) {
+    let obj = arr.reduce((red: any, [field, value]: any) => {
+        if (red.hasOwnProperty(field)) {
+            if (Array.isArray(red[field])) {
+                red[field] = [...red[field], value];
+            } else {
+                red[field] = [red[field], value];
+            }
+        } else {
+            let [_, prefix, keys] = field.match(/^([^\[]+)((?:\[[^\]]*\])*)/);
+            if (keys) {
+                keys = Array.from(keys.matchAll(/\[([^\]]*)\]/g), (m: any) => m[1]);
+                value = needPatch(red[prefix], keys, value);
+            }
+            red[prefix] = value;
+        }
+        return red;
+    }, {});
+    return obj;
+}
+
+export function parseQuery(query: string) {
+    if (query === null) return {};
+    let data = new URLSearchParams("?" + query);
+    return myParse(Array.from(data.entries()));
 }

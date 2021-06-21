@@ -1,13 +1,14 @@
 /node_modules
 /lib
 /benchmarks
+/benchmark
 /src/dev.ts
 yarn.lock
 wiki.md
 .npmignore
 note.txt
+dev.js
 
-/benchmark/node_modules
 /example/test
 /example/using-custom-http/node_modules
 /example/using-ts/node_modules

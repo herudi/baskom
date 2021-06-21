@@ -1,22 +1,19 @@
 # Baskom js
 
-[![npm version](https://img.shields.io/badge/npm-0.3.0-blue.svg)](https://npmjs.org/package/baskom) 
+[![npm version](https://img.shields.io/badge/npm-1.0.0-blue.svg)](https://npmjs.org/package/baskom) 
 [![License](https://img.shields.io/:license-mit-blue.svg)](http://badges.mit-license.org)
 [![download-url](https://img.shields.io/npm/dm/baskom.svg)](https://npmjs.org/package/baskom)
 
-Fast and fun nodejs framework with easy to use.
-> Try with 1000+ route, your app still fast with baskom. [benchmark](https://github.com/herudi/baskom/tree/main/benchmark)
+Fun nodejs framework with easy to use.
 
 ## Features
 
-- Small (just ~40kb installed).
 - Robust routing.
-- Support middleware like express (you can use express middleware like multer, body-parser,  express-validator, serve-static and many more).
+- Support middleware like express.
 - Support popular template engine (ejs, handlebars, pug, jsx and more).
-- Support custom server for (ssr framework) [Nextjs](https://nextjs.org/), [Nuxtjs](https://nuxtjs.org/), [Sapper](https://sapper.svelte.dev/) and more. [See Example](https://github.com/herudi/baskom/tree/master/example)
 
 ## Requerement
-Nodejs v6.x or higher
+Nodejs v8.x or higher
 
 ## Installation
 
@@ -83,6 +80,8 @@ res.header({
     'Content-Type': 'text/html',
     'More': 'more'
 });
+res.cookie(name, value, config);
+res.clearCookie(name);
 res.set('Content-Type', 'text/html');
 res.get('Content-Type');
 // and more
@@ -100,7 +99,9 @@ req.params
 req.originalUrl
 req.search
 req._parsedUrl
-req._body
+req.getCookies()
+// decode if encode
+req.getCookies(true)
 // and more
 ```
 For typescript see [example using ts](https://github.com/herudi/baskom/tree/master/example/using-ts)
