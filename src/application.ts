@@ -10,7 +10,8 @@ import {
     getEngine,
     modPath,
     getReqCookies,
-    parseQuery
+    parseQuery,
+    findFns
 } from './utils';
 import response from './response';
 import {
@@ -100,20 +101,13 @@ class Application<
             };
         };
     };
-    #findFns = (arr: any[]) => {
-        let ret: any[] = [], i = 0, len = arr.length;
-        for (; i < len; i++) {
-            if (Array.isArray(arr[i])) {
-                ret = ret.concat(this.#findFns(arr[i]));
-            } else if (typeof arr[i] === 'function') {
-                ret.push(arr[i]);
-            }
+    #addRoutes = (arg: string, args: any[], routes: any[], i = 0) => {
+        let prefix = ''; 
+        let midds = findFns(args);
+        let len = routes.length;
+        if (typeof arg === 'string' && arg.length > 1 && arg.charAt(0) === '/') {
+            prefix = arg;
         }
-        return ret;
-    }
-    #addRoutes = (arg: string, args: any[], routes: any[]) => {
-        let prefix = '', midds = this.#findFns(args), i = 0, len = routes.length;
-        if (typeof arg === 'string' && arg.length > 1 && arg.charAt(0) === '/') prefix = arg;
         for (; i < len; i++) {
             let el = routes[i];
             el.handlers = midds.concat(el.handlers);
@@ -194,7 +188,7 @@ class Application<
     }
 
     call(method: string, path: string, ...handlers: Handlers<Req, Res>) {
-        let fns = this.#findFns(handlers);
+        let fns = findFns(handlers);
         let obj = toPathx(path, method === 'ALL');
         if (obj !== void 0) {
             if (obj.key) {
@@ -250,9 +244,9 @@ class Application<
                 this.#onNotFound = larg;
             } else {
                 if (arg === '/' || arg === '') {
-                    this.midds = this.midds.concat(this.#findFns(args));
+                    this.midds = this.midds.concat(findFns(args));
                 } else {
-                    this.pmidds[arg] = [modPath(arg)].concat(this.#findFns(args));
+                    this.pmidds[arg] = [modPath(arg)].concat(findFns(args));
                 }
             }
         } else if (typeof larg === 'object' && larg.c_routes) {
@@ -271,7 +265,7 @@ class Application<
                 }
             };
         } else {
-            this.midds = this.midds.concat(this.#findFns(args));
+            this.midds = this.midds.concat(findFns(args));
         }
         return this;
     }

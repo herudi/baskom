@@ -37,7 +37,8 @@ export default class Router<
         url: string,
         notFound: Handler
     ) {
-        let params: { [key: string]: any } = {}, handlers: any[] = [];
+        let params: { [key: string]: any } = {};
+        let handlers: Handlers = [];
         if (this.routes[method + url]) {
             let obj = this.routes[method + url];
             if (obj.m) {
@@ -47,14 +48,19 @@ export default class Router<
                 this.routes[method + url] = { m: true, handlers };
             }
         } else {
-            let key = '';
-            // many user call http://qwerty.com/user/param/. unfortunately.
-            if (url.lastIndexOf('/') === (url.length - 1)) {
-                let _key = url.slice(0, -1);
-                key = _key.substring(0, _key.lastIndexOf('/'));
-            } else {
-                key = url.substring(0, url.lastIndexOf('/'));
+            if (url[url.length - 1] === "/") {
+                return { 
+                    params, 
+                    handlers: this.#addMidd(
+                        url, 
+                        this.midds, 
+                        notFound, 
+                        [], 
+                        this.pmidds
+                    ) 
+                };
             }
+            let key = url.substring(0, url.lastIndexOf('/'));
             if (this.routes[method + key + '/:p']) {
                 let obj = this.routes[method + key + '/:p'];
                 params[obj.params] = url.substring(url.lastIndexOf('/') + 1);
@@ -64,9 +70,13 @@ export default class Router<
                     handlers = this.#addMidd(url, this.midds, notFound, obj.handlers);
                     this.routes[method + key + '/:p'] = { m: true, params: obj.params, handlers };
                 }
-            }
-            else {
-                let i = 0, j = 0, obj: any = {}, routes = this.routes[method] || [], matches = [], nf = true;
+            } else {
+                let i = 0; 
+                let j = 0;
+                let obj: any = {}; 
+                let routes = this.routes[method] || []; 
+                let matches = []; 
+                let is404 = true;
                 if (this.routes['ALL']) {
                     routes = routes.concat(this.routes['ALL']);
                 }
@@ -75,8 +85,14 @@ export default class Router<
                     while (i < len) {
                         obj = routes[i];
                         if (obj.pathx && obj.pathx.test(url)) {
-                            nf = false;
-                            handlers = this.#addMidd(url, this.midds, notFound, obj.handlers, this.pmidds);
+                            is404 = false;
+                            handlers = this.#addMidd(
+                                url, 
+                                this.midds, 
+                                notFound, 
+                                obj.handlers, 
+                                this.pmidds
+                            );
                             if (obj.params) {
                                 matches = obj.pathx.exec(url);
                                 while (j < obj.params.length) {
@@ -91,8 +107,14 @@ export default class Router<
                         i++;
                     }
                 }
-                if (nf) {
-                    handlers = this.#addMidd(url, this.midds, notFound, [], this.pmidds);
+                if (is404) {
+                    handlers = this.#addMidd(
+                        url, 
+                        this.midds, 
+                        notFound, 
+                        [], 
+                        this.pmidds
+                    );
                 }
             }
         }

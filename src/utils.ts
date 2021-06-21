@@ -34,6 +34,18 @@ type TDefaultEngineParam = {
     options?: { [key: string]: any };
 }
 
+export function findFns(arr: any[]) {
+    let ret: any[] = [], i = 0, len = arr.length;
+    for (; i < len; i++) {
+        if (Array.isArray(arr[i])) {
+            ret = ret.concat(findFns(arr[i]));
+        } else if (typeof arr[i] === 'function') {
+            ret.push(arr[i]);
+        }
+    }
+    return ret;
+}
+
 function isTypeBodyPassed(header: any, _type: string) {
     return header[CONTENT_TYPE.toLowerCase()] && header[CONTENT_TYPE.toLowerCase()].indexOf(_type) !== -1;
 }
