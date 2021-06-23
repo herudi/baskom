@@ -1,5 +1,5 @@
 import { Handler, Handlers, HttpRequest, HttpResponse } from "./types";
-import { findBase } from "./utils";
+import { findBase, mutObj } from "./utils";
 
 export default class Router<
     Req extends HttpRequest = HttpRequest,
@@ -117,6 +117,7 @@ export default class Router<
                     );
                 }
             }
+            params = mutObj(params);
         }
         return { params, handlers };
     }

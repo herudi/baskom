@@ -11,7 +11,8 @@ import {
     modPath,
     getReqCookies,
     parseQuery,
-    findFns
+    findFns,
+    mutObj
 } from './utils';
 import response from './response';
 import {
@@ -172,7 +173,7 @@ class Application<
         req.originalUrl = (req.originalUrl || req.url) as string;
         req.params = obj.params;
         req.path = req._parsedUrl.pathname;
-        req.query = this.#parsequery(req._parsedUrl.query);
+        req.query = req._parsedUrl.query ? mutObj(this.#parsequery(req._parsedUrl.query)) : {};
         req.search = req._parsedUrl.search;
         req.body = req.body || {};
         req.getCookies = (b?: boolean) => getReqCookies(req, b);

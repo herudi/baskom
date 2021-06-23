@@ -50,6 +50,9 @@ function response(res: HttpResponse, engine: any) {
         } else if (Buffer.isBuffer(data)) {
             this.type((this.getHeader(CONTENT_TYPE) || 'bin') as string).end(data);
         } else if (typeof data === 'object') {
+            if (res.___view) {
+                return res.render(res.___view, data);
+            }
             this.json(data);
         } else {
             res.end(data || STATUS_CODES[this.statusCode]);
@@ -86,7 +89,7 @@ function response(res: HttpResponse, engine: any) {
         let fStream = fs.createReadStream(filepath);
         fStream.pipe(this);
     };
-    res.render = function (source: string, ...args: any) {
+    res.render = function (source: any, ...args: any) {
         let idx = source.indexOf('.'),
             obj: any = engine[Object.keys(engine)[0]],
             pathfile = path.join(obj.basedir, source + obj.ext);

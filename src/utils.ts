@@ -94,17 +94,21 @@ export function findBase(pathname: string) {
 }
 
 export function getEngine(arg: any) {
-    if (arg.etag === void 0) arg.etag = true;
+    if (arg.etag === void 0) arg.etag = false;
     let defaultDir = pathnode.join(pathnode.dirname((require as any).main.filename || (process as any).mainModule.filename), 'views'),
         ext = arg.ext,
         basedir = pathnode.resolve(arg.basedir || defaultDir),
         render = arg.render;
     if (render === void 0) {
         let engine = (typeof arg.engine === 'string' ? require(arg.engine) : arg.engine);
-        if (typeof engine === 'object' && engine.renderFile !== void 0) engine = engine.renderFile;
+        if (typeof engine === 'object' && engine.renderFile !== void 0) {
+            engine = engine.renderFile;
+        }
         let _name = arg.name || (typeof arg.engine === 'string' ? arg.engine : 'html');
         ext = ext || ('.' + _name);
-        if (_name === 'nunjucks') engine.configure(basedir, { autoescape: arg.autoescape || true });
+        if (_name === 'nunjucks') {
+            engine.configure(basedir, arg);
+        }
         render = defaultRenderEngine({
             engine,
             name: _name,
@@ -122,6 +126,36 @@ export function modPath(prefix: string) {
         req.path = req.path ? req.path.substring(prefix.length) || '/' : '/';
         next();
     }
+}
+
+const isObj = (n: any) => n.constructor === Object;
+const isArr = (n: any) => Array.isArray(n);
+const isBool = (n: any) => n === "true" || n === "false";
+const isNum = (n: any) => !isNaN(parseFloat(n)) && isFinite(n);
+const mutValue = (n: any) => {
+    if (typeof n === "undefined" || n === "") return null;
+    if (isNum(n)) return parseFloat(n);
+    if (isBool(n)) return n === 'true';
+    if (isArr(n)) return mutArr(n);
+    if (isObj(n)) return mutObj(n);
+    return n;
+}
+const mutArr = (arr: any[], i = 0) => {
+    let ret = [] as any[];
+    let len = arr.length;
+    while (i < len) {
+        ret[i] = mutValue(arr[i]);
+        i++;
+    }
+    return ret;
+}
+export const mutObj = (obj: any) => {
+    let ret = {} as any, value;
+    for (const k in obj) {
+        value = mutValue(obj[k]);
+        if (value !== null) ret[k] = value;
+    }
+    return ret;
 }
 
 export function toPathx(path: string | RegExp, isAll: boolean) {
@@ -195,29 +229,24 @@ export function finalHandler(
                 }
             }).on('end', () => {
                 if (error) return next(error);
-                if (!chunks.length) {
-                    next();
-                    return;
-                }
-                let urlencode_parse = qs_parse || parseQuery,
-                    str = Buffer.concat(chunks).toString(),
-                    body = undefined;
-                if (isTypeBodyPassed(header, JSON_TYPE)) {
+                if (!chunks.length) return next();
+                let str = Buffer.concat(chunks).toString();
+                let body = undefined;
+                if (isTypeBodyPassed(header, JSON_TYPE) && !req._body) {
                     try {
                         body = JSON.parse(str);
+                        req._body = req._body !== false;
                     } catch (err) {
                         return next(err);
                     }
-                }
-                else if (isTypeBodyPassed(header, TEXT_PLAIN_TYPE)) body = str;
-                else if (isTypeBodyPassed(header, FORM_URLENCODED_TYPE)) {
+                } else if (isTypeBodyPassed(header, FORM_URLENCODED_TYPE) && !req._body) {
                     try {
-                        body = urlencode_parse(str);
+                        body = mutObj(qs_parse(str));
+                        req._body = req._body !== false;
                     } catch (err) {
                         return next(err);
                     }
                 }
-                req._body = body !== undefined;
                 req.body = body || {};
                 next();
             });

@@ -26,6 +26,15 @@ type THeaders<
         next: NextFunction,
     ) => { [k: string]: any };
 
+type TString<
+    Req extends HttpRequest = HttpRequest,
+    Res extends HttpResponse = HttpResponse,
+    > = (
+        req: Req,
+        res: Res,
+        next: NextFunction,
+    ) => string;
+
 function joinTargetMethod(target: any, prop: string, arr: any[]) {
     let obj = target["methods"] || {};
     obj[prop] = obj[prop] || {};
@@ -37,6 +46,9 @@ function addMethod(method: string, path: string = "") {
     return (target: any, prop: string, des: PropertyDescriptor) => {
         const ori = des.value;
         des.value = function (...args: any[]) {
+            target["request"] = args[0];
+            target["response"] = args[1];
+            target["next"] = args[2];
             let result = ori.apply(target, args);
             return result;
         };
@@ -78,6 +90,28 @@ export function Status(status: number | TStatus) {
             next();
         };
         target["methods"] = joinTargetMethod(target, prop, [statusFn]);
+        return des;
+    };
+}
+export function Type(name: string | TString) {
+    return (target: any, prop: string, des: PropertyDescriptor) => {
+        const typeFn: Handler = (req, res, next) => {
+            res.type(
+                typeof name === "function" ? name(req, res, next) : name,
+            );
+            next();
+        };
+        target["methods"] = joinTargetMethod(target, prop, [typeFn]);
+        return des;
+    };
+}
+export function Render(name: string | TString) {
+    return (target: any, prop: string, des: PropertyDescriptor) => {
+        const renderFn: Handler = (req, res, next) => {
+            res.___view = name;
+            next();
+        };
+        target["methods"] = joinTargetMethod(target, prop, [renderFn]);
         return des;
     };
 }
@@ -123,5 +157,15 @@ export class AddControllers extends Router {
 
 export const addControllers = (controllers: { new(...args: any): any }[]) => {
     return new AddControllers(controllers);
+}
+
+export class BaseController<
+  Req extends HttpRequest = HttpRequest,
+  Res extends HttpResponse = HttpResponse,
+> {
+  request!: Req;
+  response!: Res;
+  next!: NextFunction;
+  [k: string]: any
 }
 

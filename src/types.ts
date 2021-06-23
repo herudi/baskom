@@ -18,7 +18,7 @@ export interface HttpRequest extends IncomingMessage {
         query: string | null;
         search: string | null;
     };
-    body?: { [key: string]: any };
+    body: { [key: string]: any };
     params: { [key: string]: any };
     query: { [key: string]: any };
     path: string;
@@ -34,9 +34,7 @@ export interface HttpResponse extends ServerResponse {
     type(contentType: string): this;
     json(data: { [key: string]: any } | null): void;
     send(data: any): void;
-    render(pathfile: string, param: any, option: any): void;
-    render(pathfile: string, param: any): void;
-    render(pathfile: string, ...args: any): void;
+    render(name: string, ...args: any): void;
     redirect(url: string, status?: number): void;
     sendFile(filepath: string, etag?: boolean): void;
     download(filepath: string): void;
