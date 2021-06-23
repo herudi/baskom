@@ -108,7 +108,7 @@ export function Type(name: string | TString) {
 export function Render(name: string | TString) {
     return (target: any, prop: string, des: PropertyDescriptor) => {
         const renderFn: Handler = (req, res, next) => {
-            res.___view = name;
+            res.___view = typeof name === "function" ? name(req, res, next) : name;
             next();
         };
         target["methods"] = joinTargetMethod(target, prop, [renderFn]);

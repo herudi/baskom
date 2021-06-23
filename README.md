@@ -1,6 +1,6 @@
 # Baskom js
 
-[![npm version](https://img.shields.io/badge/npm-1.0.2-blue.svg)](https://npmjs.org/package/baskom) 
+[![npm version](https://img.shields.io/badge/npm-1.0.3-blue.svg)](https://npmjs.org/package/baskom) 
 [![License](https://img.shields.io/:license-mit-blue.svg)](http://badges.mit-license.org)
 [![download-url](https://img.shields.io/npm/dm/baskom.svg)](https://npmjs.org/package/baskom)
 

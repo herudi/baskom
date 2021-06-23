@@ -224,7 +224,7 @@ class Application<
     use(router: Router[]): this;
     use(middleware: Handler<Req, Res>, routers: Router[]): this;
     use(middleware: Handler<Req, Res>, router: Router): this;
-    use(middleware: Handler<Req, Res> | TEHandler): this;
+    use(middleware: Handler<Req, Res>): this;
     use(...middlewares: Handlers<Req, Res>): this;
     use(prefix: string, middleware: Handler<Req, Res>, routers: Router[]): this;
     use(prefix: string, middleware: Handler<Req, Res>, router: Router): this;

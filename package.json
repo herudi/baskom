@@ -1,6 +1,6 @@
 {
     "name": "baskom",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "description": "Fun nodejs framework with easy to use.",
     "main": "lib/index.js",
     "types": "lib/index.d.ts",
