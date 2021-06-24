@@ -12,6 +12,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
 app.post('/user', (req, res) => {
+    console.log(req._body);
     console.log(req.body);
     res.code(201);
     return 'User Created';

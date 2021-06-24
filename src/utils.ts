@@ -1,9 +1,19 @@
-import { MIME_TYPES, OCTET_TYPE, JSON_TYPE, TEXT_PLAIN_TYPE, FORM_URLENCODED_TYPE, CONTENT_TYPE, SERIALIZE_COOKIE_REGEXP } from './constant';
-import { NextFunction, TErrorResponse, Cookie, HttpResponse, HttpRequest } from './types';
+import {
+    MIME_TYPES,
+    OCTET_TYPE,
+    JSON_TYPE,
+    TEXT_PLAIN_TYPE,
+    FORM_URLENCODED_TYPE,
+    CONTENT_TYPE,
+    SERIALIZE_COOKIE_REGEXP
+} from './constant';
+import { NextFunction, TErrorResponse, Cookie, Handler, } from './types';
 import * as pathnode from 'path';
 import { CONTENT_LENGTH } from './constant';
 import * as fs from 'fs';
 import * as _util from 'util';
+import { HttpRequest } from './http_request';
+import { HttpResponse } from './http_response';
 
 const encoder = new _util.TextEncoder();
 const decoder = new _util.TextDecoder();
@@ -120,42 +130,12 @@ export function getEngine(arg: any) {
     return { ext, basedir, render };
 }
 
-export function modPath(prefix: string) {
-    return function (req: HttpRequest, res: HttpResponse, next: NextFunction) {
+export function modPath(prefix: string): Handler {
+    return function (req, res, next) {
         req.url = (req.url as string).substring(prefix.length) || '/';
         req.path = req.path ? req.path.substring(prefix.length) || '/' : '/';
         next();
     }
-}
-
-const isObj = (n: any) => n.constructor === Object;
-const isArr = (n: any) => Array.isArray(n);
-const isBool = (n: any) => n === "true" || n === "false";
-const isNum = (n: any) => !isNaN(parseFloat(n)) && isFinite(n);
-const mutValue = (n: any) => {
-    if (typeof n === "undefined" || n === "") return null;
-    if (isNum(n)) return parseFloat(n);
-    if (isBool(n)) return n === 'true';
-    if (isArr(n)) return mutArr(n);
-    if (isObj(n)) return mutObj(n);
-    return n;
-}
-const mutArr = (arr: any[], i = 0) => {
-    let ret = [] as any[];
-    let len = arr.length;
-    while (i < len) {
-        ret[i] = mutValue(arr[i]);
-        i++;
-    }
-    return ret;
-}
-export const mutObj = (obj: any) => {
-    let ret = {} as any, value;
-    for (const k in obj) {
-        value = mutValue(obj[k]);
-        if (value !== null) ret[k] = value;
-    }
-    return ret;
 }
 
 export function toPathx(path: string | RegExp, isAll: boolean) {
@@ -232,16 +212,16 @@ export function finalHandler(
                 if (!chunks.length) return next();
                 let str = Buffer.concat(chunks).toString();
                 let body = undefined;
-                if (isTypeBodyPassed(header, JSON_TYPE) && !req._body) {
+                if (isTypeBodyPassed(header, JSON_TYPE)) {
                     try {
                         body = JSON.parse(str);
                         req._body = req._body !== false;
                     } catch (err) {
                         return next(err);
                     }
-                } else if (isTypeBodyPassed(header, FORM_URLENCODED_TYPE) && !req._body) {
+                } else if (isTypeBodyPassed(header, FORM_URLENCODED_TYPE)) {
                     try {
-                        body = mutObj(qs_parse(str));
+                        body = qs_parse(str);
                         req._body = req._body !== false;
                     } catch (err) {
                         return next(err);

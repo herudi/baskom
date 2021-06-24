@@ -11,20 +11,18 @@ import {
     modPath,
     getReqCookies,
     parseQuery,
-    findFns,
-    mutObj
+    findFns
 } from './utils';
-import response from './response';
 import {
     Handler,
     Handlers,
-    HttpRequest,
-    HttpResponse,
-    IApp,
+    AppOptions,
     NextFunction,
     TEHandler,
     TErrorResponse
 } from './types';
+import { HttpRequest } from './http_request';
+import { HttpResponse, response } from './http_response';
 
 class Application<
     Req extends HttpRequest = HttpRequest,
@@ -45,7 +43,7 @@ class Application<
         useDebugError,
         useBodyLimit,
         useDefaultBody
-    }: IApp = {}) {
+    }: AppOptions = {}) {
         super();
         this.#debugError = !!useDebugError;
         this.#serverTimeout = useServerTimeout || 0;
@@ -173,7 +171,7 @@ class Application<
         req.originalUrl = (req.originalUrl || req.url) as string;
         req.params = obj.params;
         req.path = req._parsedUrl.pathname;
-        req.query = req._parsedUrl.query ? mutObj(this.#parsequery(req._parsedUrl.query)) : {};
+        req.query = this.#parsequery(req._parsedUrl.query);
         req.search = req._parsedUrl.search;
         req.body = req.body || {};
         req.getCookies = (b?: boolean) => getReqCookies(req, b);

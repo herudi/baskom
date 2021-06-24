@@ -1,12 +1,12 @@
 import Router from "./router";
 import {
-    HttpRequest,
-    HttpResponse,
     NextFunction,
     Handler,
     Handlers
 } from "./types";
 import { findFns } from "./utils";
+import { HttpRequest } from './http_request';
+import { HttpResponse } from './http_response';
 
 type TStatus<
     Req extends HttpRequest = HttpRequest,

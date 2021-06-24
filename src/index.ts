@@ -1,6 +1,6 @@
 import App from "./application";
 import Router from "./router";
-import { IApp } from "./types";
+import { AppOptions } from "./types";
 import { 
     BadRequestError, 
     UnprocessableEntityError, 
@@ -19,7 +19,7 @@ const baskom = ({
     useDebugError, 
     useBodyLimit, 
     useDefaultBody 
-}: IApp = {}) => new App({ 
+}: AppOptions = {}) => new App({ 
     useServer, 
     useParseQueryString, 
     useDebugError, 

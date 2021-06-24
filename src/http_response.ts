@@ -1,11 +1,30 @@
+import { ServerResponse, STATUS_CODES } from "http";
+import { Cookie } from "./types";
 import * as path from 'path';
 import * as fs from 'fs';
-import { STATUS_CODES } from "http";
 import { OCTET_TYPE, CONTENT_LENGTH, CONTENT_TYPE, JSON_TYPE, CHARSET, MIME_TYPES } from "./constant";
 import { getMimeType, getReqHeaders, serializeCookie } from './utils';
-import { HttpResponse } from './types';
 
-function response(res: HttpResponse, engine: any) {
+export class HttpResponse extends ServerResponse {
+    code!: (status: number) => this;
+    status!: (status: number) => this;
+    type!: (contentType: string) => this;
+    json!: (data: { [key: string]: any } | null) => void;
+    send!: (data: any) => void;
+    render!: (name: string, ...args: any) => void;
+    redirect!: (url: string, status?: number) => void;
+    sendFile!: (filepath: string, etag?: boolean) => void;
+    download!: (filepath: string) => void;
+    set!: (name: { [key: string]: any } | string, value?: string | number | string[] | number[]) => this;
+    header!: (name: { [key: string]: any } | string, value?: string | number | string[] | number[]) => this;
+    get!: (name: string) => void;
+    locals: any;
+    cookie!: (name: string, value: any, options?: Cookie) => this;
+    clearCookie!: (name: string, options?: Cookie) => void;
+    [key: string]: any;
+}
+
+export function response(res: HttpResponse, engine: any) {
     res.code = function (code) {
         this.statusCode = code;
         return this;
@@ -117,4 +136,3 @@ function response(res: HttpResponse, engine: any) {
         ));
     };
 }
-export default response;
