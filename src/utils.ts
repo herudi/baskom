@@ -144,10 +144,6 @@ export function toPathx(path: string | RegExp, isAll: boolean) {
     if (!trgx.test(path) && isAll === false) {
         let len = (path.match(/\/:/gi) || []).length;
         if (len === 0) return;
-        if (len === 1) {
-            let arr = path.split('/:');
-            if (arr[arr.length - 1].indexOf('/') === -1) return { params: arr[1], key: arr[0] + '/:p', pathx: null };
-        }
     };
     let params: any[] | string | null = [], pattern = '', strReg = '/([^/]+?)', strRegQ = '(?:/([^/]+?))?';
     if (trgx.test(path)) {
@@ -198,7 +194,7 @@ export function finalHandler(
         if (isTypeBodyPassed(header, JSON_TYPE) ||
             isTypeBodyPassed(header, TEXT_PLAIN_TYPE) ||
             isTypeBodyPassed(header, FORM_URLENCODED_TYPE)) {
-            let chunks: Uint8Array[] | Buffer[] = [], error: null = null;
+            let chunks: Uint8Array[] | Buffer[] = [], error: unknown = null;
             req.on('data', (buf: Buffer) => {
                 let lmt = parsebytes(limit), len = Buffer.byteLength(buf);
                 try {
@@ -356,7 +352,7 @@ export function serializeCookie(
     cookie.encode = !!cookie.encode;
     if (cookie.encode) {
         let enc = encoder.encode(value);
-        value = Buffer.from(enc.toString()).toString('base64');
+        value = "E:" + Buffer.from(enc.toString()).toString('base64');
     }
     let ret = `${name}=${value}`;
 
@@ -406,9 +402,17 @@ export function serializeCookie(
 
 function tryDecode(str: string) {
     try {
+        str = str.substring(2);
         const dec = Buffer.from(str, 'base64').toString('ascii');
-        const uin = Uint8Array.from(dec.split(',') as any);
-        return decoder.decode(uin) || str;
+        const uint = Uint8Array.from(dec.split(',') as any);
+        const ret = decoder.decode(uint) || str;
+        if (ret !== str) {
+            if (ret.startsWith("j:{") || ret.startsWith("j:[")) {
+                const json = ret.substring(2);
+                return JSON.parse(json);
+            }
+        }
+        return ret;
     } catch (error) {
         return str;
     }
@@ -423,7 +427,9 @@ export function getReqCookies(req: HttpRequest, decode?: boolean, i = 0) {
     while (i < len) {
         const [key, ...oriVal] = arr[i].split("=");
         let val = oriVal.join("=");
-        ret[key.trim()] = decode ? tryDecode(val) : val;
+        ret[key.trim()] = decode
+            ? (val.startsWith("E:") ? tryDecode(val) : val)
+            : val;
         i++;
     }
     return ret;

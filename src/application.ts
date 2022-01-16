@@ -90,7 +90,7 @@ class Application<
             try {
                 ret = handler(err, req, res, next);
             } catch (err) {
-                return this.#onError(err, req, res, next);
+                return this.#onError(err as Error, req, res, next);
             }
             if (ret) {
                 if (typeof ret.then === 'function') {
@@ -190,20 +190,11 @@ class Application<
         let fns = findFns(handlers);
         let obj = toPathx(path, method === 'ALL');
         if (obj !== void 0) {
-            if (obj.key) {
-                this.routes[method + obj.key] = {
-                    params: obj.params,
-                    handlers: fns
-                };
-            } else {
-                if (this.routes[method] === void 0) {
-                    this.routes[method] = [];
-                }
-                this.routes[method].push({
-                    ...obj,
-                    handlers: fns
-                });
-            }
+            this.routes[method] = this.routes[method] || [];
+            this.routes[method].push({
+                ...obj,
+                handlers: fns
+            });
         } else {
             this.routes[method + path] = { handlers: fns };;
         }

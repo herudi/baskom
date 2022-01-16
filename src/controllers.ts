@@ -35,14 +35,14 @@ type TString<
         next: NextFunction,
     ) => string;
 
-function joinTargetMethod(target: any, prop: string, arr: any[]) {
+export function joinTargetMethod(target: any, prop: string, arr: any[]) {
     let obj = target["methods"] || {};
     obj[prop] = obj[prop] || {};
     obj[prop].handlers = arr.concat(obj[prop].handlers || []);
     return obj;
 }
 
-function addMethod(method: string, path: string = "") {
+export function addMethodDecorator(method: string, path: string = "") {
     return (target: any, prop: string, des: PropertyDescriptor) => {
         const ori = des.value;
         des.value = function (...args: any[]) {
@@ -61,14 +61,14 @@ function addMethod(method: string, path: string = "") {
     };
 }
 
-export const Get = (path: string = "") => addMethod("GET", path);
-export const Post = (path: string = "") => addMethod("POST", path);
-export const Put = (path: string = "") => addMethod("PUT", path);
-export const Delete = (path: string = "") => addMethod("DELETE", path);
-export const All = (path: string = "") => addMethod("ALL", path);
-export const Options = (path: string = "") => addMethod("OPTIONS", path);
-export const Head = (path: string = "") => addMethod("HEAD", path);
-export const Patch = (path: string = "") => addMethod("PATCH", path);
+export const Get = (path: string = "") => addMethodDecorator("GET", path);
+export const Post = (path: string = "") => addMethodDecorator("POST", path);
+export const Put = (path: string = "") => addMethodDecorator("PUT", path);
+export const Delete = (path: string = "") => addMethodDecorator("DELETE", path);
+export const All = (path: string = "") => addMethodDecorator("ALL", path);
+export const Options = (path: string = "") => addMethodDecorator("OPTIONS", path);
+export const Head = (path: string = "") => addMethodDecorator("HEAD", path);
+export const Patch = (path: string = "") => addMethodDecorator("PATCH", path);
 
 export function Wares<
     Req extends HttpRequest = HttpRequest,
